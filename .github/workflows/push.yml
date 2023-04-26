@@ -1,0 +1,21 @@
+name: Push
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: "16.x"
+      - name: Install and build Vue.js project
+        run: |
+          cd client
+          npm ci
+          npm run build
