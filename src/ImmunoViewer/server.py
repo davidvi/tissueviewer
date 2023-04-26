@@ -9,6 +9,7 @@ import json
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
+import pathlib
 
 from flask import Flask, render_template, Response, request, send_from_directory, send_file
 from flask_cors import CORS, cross_origin
@@ -17,6 +18,8 @@ app = Flask(__name__)
 
 cors = CORS(app)
 app.config['CORS_HEADERS'] = 'Content-Type'
+
+current_folder = pathlib.Path(__file__).parent.resolve()
 
 def mix_channels(images, chs, gains):
 
@@ -69,9 +72,9 @@ def find_directories_with_files_folders(base_dir):
 @cross_origin()
 def index(path):
     if path and (path.startswith('assets') or path.startswith('favicon') or path.startswith('images')):
-        return send_from_directory(os.path.abspath("client/dist"), path)
+        return send_from_directory(os.path.join(current_folder, "client"), path)
     else:
-        return send_from_directory(os.path.abspath("client/dist"), 'index.html')
+        return send_from_directory(os.path.join(current_folder, "client"), 'index.html')
 
 @app.route('/samples.json')
 @cross_origin()

@@ -4,6 +4,7 @@ with open('README.md', 'r', encoding='utf-8') as fh:
     long_description = fh.read()
 
 setuptools.setup(
+    version='0.1.4',
     name='ImmunoViewer',
     author='David van IJzendoorn',
     author_email='davidvanijzendoorn@gmail.com',
@@ -11,7 +12,7 @@ setuptools.setup(
     keywords='big tif, immuno, viewer, annotate, annotation, discover, discovery, image, images, tif, tiff, multi-channel, multi c',
     long_description=long_description,
     long_description_content_type='text/markdown',
-    url='https://github.com/tomchen/example_pypi_package',
+    url='https://github.com/davidvi/ImmunoViewer',
     project_urls={
         'Documentation': 'https://github.com/davidvi/ImmunoViewer',
         'Bug Reports':
@@ -19,6 +20,9 @@ setuptools.setup(
         'Source Code': 'https://github.com/davidvi/ImmunoViewer'
     },
     package_dir={'': 'src'},
+    package_data={
+        'ImmunoViewer': ['client/*', 'client/*/*']
+        },
     packages=setuptools.find_packages(where='src'),
     classifiers=[
         # see https://pypi.org/classifiers/
