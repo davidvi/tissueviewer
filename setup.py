@@ -4,11 +4,11 @@ with open('README.md', 'r', encoding='utf-8') as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    version='0.1.4',
+    version='0.1.5',
     name='ImmunoViewer',
     author='David van IJzendoorn',
     author_email='davidvanijzendoorn@gmail.com',
-    description='Discover and annotate your (multi-channel) big TIF files with this user-friendly viewer',
+    description='Explore and annotate your multi-channel large TIF files with this user-friendly viewer.',
     keywords='big tif, immuno, viewer, annotate, annotation, discover, discovery, image, images, tif, tiff, multi-channel, multi c',
     long_description=long_description,
     long_description_content_type='text/markdown',

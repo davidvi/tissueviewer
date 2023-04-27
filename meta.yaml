@@ -1,0 +1,19 @@
+package:
+  name: ImmunoViewer
+  version: v0.1.4
+
+source:
+  git_rev: v0.1.4
+  git_url: https://github.com/davidvi/ImmunoViewer.git
+
+requirements:
+  build:
+    - python>=3.6
+    - setuptools
+
+  run:
+    - python>=3.6
+    - openslide==3.4.1
+
+about:
+  home:
