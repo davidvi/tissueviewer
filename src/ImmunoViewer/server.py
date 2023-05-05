@@ -190,3 +190,6 @@ def main():
             parser.error('No slide file specified')
 
     app.run(host=opts.host, port=opts.port, threaded=True, debug=True)
+
+if __name__ == '__main__':
+    main()

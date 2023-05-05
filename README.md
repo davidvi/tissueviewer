@@ -13,6 +13,7 @@ Explore and annotate your multi-channel large TIF files with this user-friendly 
     * [Folder structure](#folder-structure)
     * [Generate tiles](#generate-tiles)
     * [Run the viewer](#run-the-viewer)
+* [Acknowledgements](#acknowledgements)
 
 
 ## About ImmunoViewer
@@ -82,3 +83,7 @@ ImmunoViewerServer -p [port (default is 5000)] -l [IP address (default = 0.0.0.0
 Now you can navigate to http://[IP address]:[port] in your web browser to access ImmunoViewer.
 
 If you leave the IP address to default (0.0.0.0) and the port is exposed to the network other people can also view your slides.  
+
+## Acknowledgements 
+
+The script to tile big TIF files was adapted from the [OpenSlide-python repo](https://github.com/openslide/openslide-python). 

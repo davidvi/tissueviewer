@@ -6,6 +6,10 @@ import argparse
 import subprocess
 from pathlib import Path
 
+import PIL
+
+PIL.Image.MAX_IMAGE_PIXELS = 933120000
+
 from ImmunoViewer.tile import DeepZoomStaticTiler
 
 def find_files(path, min_depth, max_depth):
