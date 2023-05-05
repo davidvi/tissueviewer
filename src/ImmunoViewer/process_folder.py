@@ -6,9 +6,9 @@ import argparse
 import subprocess
 from pathlib import Path
 
-import PIL
+from PIL import Image
 
-PIL.Image.MAX_IMAGE_PIXELS = 933120000
+Image.MAX_IMAGE_PIXELS = None
 
 from ImmunoViewer.tile import DeepZoomStaticTiler
 
