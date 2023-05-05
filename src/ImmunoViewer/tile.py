@@ -30,12 +30,13 @@ import shutil
 import sys
 from unicodedata import normalize
 
-from PIL import Image
-Image.MAX_IMAGE_PIXELS = None
-
 import openslide
 from openslide import ImageSlide, open_slide
 from openslide.deepzoom import DeepZoomGenerator
+
+
+from PIL import Image
+Image.MAX_IMAGE_PIXELS = None
 
 VIEWER_SLIDE_NAME = 'slide'
 
