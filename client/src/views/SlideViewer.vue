@@ -76,7 +76,7 @@
 import axios from "axios";
 import OpenSeadragon from "openseadragon";
 
-const base_url = process.env.NODE_ENV === "production" ? "" : "http://127.0.0.1:2000";
+const base_url = process.env.NODE_ENV === "production" ? "" : "http://127.0.0.1:8000";
 
 export default {
   components: {
@@ -157,9 +157,7 @@ export default {
 
               this.addOverlay(elementCoordiantes.x, elementCoordiantes.y, this.overlays[this.overlays.length-1].number);
             },
-            
           });
-
         });
       }
     });

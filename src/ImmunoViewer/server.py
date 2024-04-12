@@ -10,6 +10,7 @@ import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import pathlib
+from xml.etree import ElementTree as ET
 
 from flask import Flask, render_template, Response, request, send_from_directory, send_file
 from flask_cors import CORS, cross_origin
@@ -47,7 +48,10 @@ def find_directories_with_files_folders(base_dir):
     directories_with_files = []
 
     for root, dirs, files in os.walk(base_dir):
+        if root.count(os.sep) - base_dir.count(os.sep) >= 2:
+            del dirs[:]
         for dirname in dirs:
+            print(dirname)
             if dirname.endswith("_files"):
                 buf = {}
                 buf['name'] = os.path.relpath(root, base_dir)
@@ -62,10 +66,22 @@ def find_directories_with_files_folders(base_dir):
                             data = json.load(f)
                             buf['details'] = data
                 break
-
+    print(directories_with_files)
     return directories_with_files
 
+def modify_dzi_format(dzi_file_path):
+    with open(dzi_file_path, 'r') as file:
+        dzi_content = file.read()
 
+    tree = ET.ElementTree(ET.fromstring(dzi_content))
+    root = tree.getroot()
+
+    if root.attrib['Format'].lower() == 'tiff':
+        root.attrib['Format'] = 'jpeg'
+
+    modified_dzi_str = ET.tostring(root, encoding='unicode')
+    
+    return modified_dzi_str
 
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
@@ -90,21 +106,16 @@ def samples():
 @app.route('/<string:files>/<string:chs>/<string:gains>/<path:file>.dzi')
 @cross_origin()
 def dzi(files, chs, gains, file):
-    path_to_dzi = os.path.join(os.path.abspath(app.config['SLIDE_DIR']), file)
-
-    for _, _, files in os.walk(path_to_dzi):
-        for file in files:
-            if file.endswith(".dzi"):
-                main_ch = file
-
-    resp = send_from_directory(path_to_dzi, main_ch)
-
-    resp.mimetype = 'application/xml'
+    files = files.split(';')
+    path_to_dzi = os.path.join(os.path.abspath(app.config['SLIDE_DIR']), file, f'{files[0].replace("_files", "")}.dzi')
+    dzi_content = modify_dzi_format(os.path.join(path_to_dzi))
+    resp = Response(dzi_content, status=200, mimetype='application/xml')
     return resp
 
 @app.route('/<string:files>/<string:chs>/<string:gains>/<path:file>_files/<int:level>/<string:loc>')
 @cross_origin()
 def tile(files, chs, gains, file, level, loc):
+    loc = loc.replace('.jpeg', '.tiff')
     files = files.split(';') 
     chs = chs.split(';')
     gains = gains.split(';')
