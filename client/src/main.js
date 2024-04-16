@@ -1,6 +1,7 @@
 import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
+import store from './store'
 
 import '@mdi/font/css/materialdesignicons.css'
 import "vuetify/styles";
@@ -18,6 +19,7 @@ const vuetify = createVuetify({
 });
 
 app.use(vuetify);
+app.use(store); 
 
 app.config.globalProperties.$filters = {
   truncateGene(value) {

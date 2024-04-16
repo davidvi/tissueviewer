@@ -6,7 +6,7 @@ const router = createRouter({
     {
       path: '/',
       name: 'viewer',
-      component: () => import('../views/SlideViewer.vue')
+      component: () => import('../views/SlideViewerNew.vue')
     }
   ]
 })
