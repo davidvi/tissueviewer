@@ -18,6 +18,10 @@ const store = createStore({
             overlays: [],
             currentSlide: null, 
             colorOptions: ["empty", "blue", "green", "red", "yellow", "cyan", "white", "black"],
+            addStainFile: "", 
+            viewportCenter: {x: 0.5, y: 0.5},
+            viewportZoom: 1,
+            viewportBounds: null, 
         }
     },
     mutations: {
@@ -27,15 +31,14 @@ const store = createStore({
             }
         },
     },
-    computed: {
-        dropdownOptions() {
-            let buf = [];
-            buf = this.selectedSample.files ? this.selectedSample.files : [];
-            buf.push("empty");
-            return buf;
-        }
-    },
     actions: {
+        addStain({state, commit, dispatch}) {
+            console.log("adding color");
+            let bufStain = state.ch;
+            bufStain[state.addStainFile] = "red";
+            commit('SET_STATE_PROPERTY', { property:"ch", value: bufStain });
+            dispatch('reloadSlide');
+        },
         loadSampleSheet({ commit }) {
             axios.get(`${baseUrl}/samples.json`)
                 .then(response => {
@@ -72,6 +75,14 @@ const store = createStore({
             dispatch('reloadSlide');
         },
 
+        removeStain({state, commit, dispatch}, file) {
+            let bufStain = state.ch;
+            bufStain[file] = "empty";
+            commit('SET_STATE_PROPERTY', { property:"ch", value: bufStain });
+
+            dispatch('reloadSlide');
+        },
+
         reloadSlide({state, commit}) {
 
             const chString = state.selectedSample.files.map((file) => {
@@ -94,6 +105,8 @@ const store = createStore({
         loadSample({state, commit, dispatch}) {
             let selectedSampleBuf = state.samples.filter(s => s.name === state.selectedSampleName)[0];
             commit('SET_STATE_PROPERTY', { property:"selectedSample", value: selectedSampleBuf });
+
+            console.log("selected sample: ", selectedSampleBuf);
 
             commit('SET_STATE_PROPERTY', { property:"ch", value: selectedSampleBuf.details.ch ? selectedSampleBuf.details.ch : {} });
             commit('SET_STATE_PROPERTY', { property:"gain", value: selectedSampleBuf.details.gain ? selectedSampleBuf.details.gain : {} });
