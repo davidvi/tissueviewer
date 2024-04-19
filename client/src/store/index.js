@@ -22,6 +22,7 @@ const store = createStore({
             viewportCenter: {x: 0.5, y: 0.5},
             viewportZoom: 1,
             viewportBounds: null, 
+            saveEnabled: false,
         }
     },
     mutations: {
@@ -45,7 +46,7 @@ const store = createStore({
                 .then(response => {
                     console.log("sample sheet: ", response.data.samples);
                     commit('SET_STATE_PROPERTY', { property:"samples", value: response.data.samples });
-
+                    commit('SET_STATE_PROPERTY', { property:"saveEnabled", value: response.data.save });
                 })
         },
 

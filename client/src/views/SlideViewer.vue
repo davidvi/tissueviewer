@@ -18,7 +18,7 @@
           </v-col>
           <v-col class="text-right">
             <!-- Save and minimize/restore buttons -->
-            <v-btn icon @click="saveDetails">
+            <v-btn icon @click="saveDetails" v-if="saveEnabled">
               <v-icon>mdi-content-save</v-icon>
             </v-btn>
             <v-btn icon @click="windowMinimal = !windowMinimal">
@@ -112,7 +112,8 @@ export default {
   computed: {
     ...mapState(["samples", "selectedSample", "gain", "ch", "ch_stain", "overlays",
       "slideSettingsShown", "selectedSampleName", "currentSlide", "colorOptions", "description",
-      "stainOptions", "addStainFile", "viewportCenter", "viewportZoom", "viewportBounds"]),
+      "stainOptions", "addStainFile", "viewportCenter", "viewportZoom", "viewportBounds", 
+      "saveEnabled"]),
     viewportBoundsLocal: {
       get() {
         return this.viewportBounds;

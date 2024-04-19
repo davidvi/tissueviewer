@@ -20,6 +20,7 @@ app = Flask(__name__)
 cors = CORS(app)
 app.config['CORS_HEADERS'] = 'Content-Type'
 app.config['SLIDE_DIR'] = "/iv-store"
+app.config['SAVE'] = True
 
 current_folder = pathlib.Path(__file__).parent.resolve()
 
@@ -100,6 +101,7 @@ def samples():
 
     buf = {}
     buf['samples'] = file_json
+    buf['save'] = app.config['SAVE']
 
     resp = Response(json.dumps(buf), status=200, mimetype='application/json')
     return resp
@@ -164,13 +166,15 @@ def open_json(file):
 @app.route('/save/<path:file>', methods=['GET', 'POST'])
 @cross_origin()
 def save_note(file):
-    if request.method == 'POST':
+    if request.method == 'POST' and app.config['SAVE']:
         data = json.loads(request.data)
 
         with open(os.path.abspath(os.path.join(app.config['SLIDE_DIR'], f'{file}', 'sample.json')), 'w') as f:
             json.dump(data, f)
 
-    return "OK"
+        return "OK"
+    else:
+        return "SAVE BLOCKED"
 
 def main():
     parser = OptionParser(usage='Usage: %prog [options] [folder]')
@@ -192,6 +196,13 @@ def main():
         default=5000,
         help='port to listen on [5000]',
     )
+    parser.add_option(
+        '-n', '--no-save',
+        dest='save',
+        action='store_false',
+        default=True,
+        help='disable saving user changes',
+    )
 
     (opts, args) = parser.parse_args()
 
@@ -202,7 +213,9 @@ def main():
             parser.error('No slide file specified')
             # app.config['SLIDE_DIR'] = "/iv-store"
 
-    print(app.config['SLIDE_DIR'])
+    app.config['SAVE'] = opts.save
+
+    print("save: ", app.config['SAVE'])
 
     app.run(host=opts.host, port=opts.port, threaded=True, debug=True)
 
