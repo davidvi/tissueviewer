@@ -26,3 +26,4 @@ for channel in range(n_channels):
     
     # Execute the command
     os.system(command)
+
