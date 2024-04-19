@@ -240,7 +240,8 @@ export default {
 
                 console.log(this.overlays);
 
-                this.addOverlay(elementCoordiantes.x, elementCoordiantes.y, this.overlays[this.overlays.length - 1].number);
+                //Add overlay, disabled for now
+                // this.addOverlay(elementCoordiantes.x, elementCoordiantes.y, this.overlays[this.overlays.length - 1].number);
               },
             });
           });
