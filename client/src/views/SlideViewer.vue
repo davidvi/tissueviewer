@@ -11,80 +11,84 @@
       <div id="view"></div>
 
       <!-- NAVIGATION -->
-<v-container fluid id="navigation-menu" style="display: block;">
-  <v-row align="center" justify="space-between">
-    <v-col>
-      <h3>Settings</h3>
-    </v-col>
-    <v-col class="text-right">
-      <!-- Save and minimize/restore buttons -->
-      <v-btn icon @click="saveDetails">
-        <v-icon>mdi-content-save</v-icon>
-      </v-btn>
-      <v-btn icon @click="windowMinimal = !windowMinimal">
-        <div v-if="windowMinimal">
-          <v-icon>mdi-window-restore</v-icon>
-        </div>
-        <div v-else>
-          <v-icon>mdi-window-minimize</v-icon>
-        </div>
-      </v-btn>
-    </v-col>
-  </v-row>
+      <v-container fluid id="navigation-menu" style="display: block;">
+        <v-row align="center" justify="space-between">
+          <v-col>
+            <h3>Settings</h3>
+          </v-col>
+          <v-col class="text-right">
+            <!-- Save and minimize/restore buttons -->
+            <v-btn icon @click="saveDetails">
+              <v-icon>mdi-content-save</v-icon>
+            </v-btn>
+            <v-btn icon @click="windowMinimal = !windowMinimal">
+              <div v-if="windowMinimal">
+                <v-icon>mdi-window-restore</v-icon>
+              </div>
+              <div v-else>
+                <v-icon>mdi-window-minimize</v-icon>
+              </div>
+            </v-btn>
+          </v-col>
+        </v-row>
+        <v-row>
+          <v-col>
+            <v-select :items="samples" v-model="selectedSampleNameLocal" label="Select slide" item-value="name"
+              item-title="name"></v-select>
+          </v-col>
+        </v-row>
+        <div v-if="!windowMinimal">
+        <v-row>
+          <v-col>
+            <b>Channels</b>
+          </v-col>
+        </v-row>
+        <v-row>
+          <v-col>
+            <div v-for="file in selectedSample.files" :key="file">
+              <v-card class="ma-1" outlined color="#34495e" v-if="ch[file] != 'empty'">
+                <v-card-text>
+                  <v-row>
+                    <v-col cols="10">
+                      <v-text-field v-model="ch_stain[file]" label="Stain description" dense></v-text-field>
+                    </v-col>
+                    <v-col cols="1">
+                      <!-- Remove stain button -->
+                      <v-btn icon @click="removeStain(file)">
+                        <v-icon>mdi-close</v-icon>
+                      </v-btn>
+                    </v-col>
+                  </v-row>
+                  <v-row>
+                    <v-col>
+                      <!-- Stain description, color selection, and gain adjustment -->
 
-  <v-row>
-    <v-col>
-      <v-select :items="samples" v-model="selectedSampleNameLocal" label="Select slide" item-value="name" item-title="name"></v-select>
-    </v-col>
-  </v-row>
+                      <v-select v-model="ch[file]" :items="colorOptions" label="Channel color" dense
+                        @update:modelValue="settingsChanged"></v-select>
+                      <v-slider v-model="gain[file]" :max="10" :min="0" :step="1" label="Gain" dense color="grey"
+                        @update:modelValue="settingsChanged"></v-slider>
+                    </v-col>
+                  </v-row>
+                </v-card-text>
+              </v-card>
+            </div>
+          </v-col>
+        </v-row>
+        <v-row>
+          <v-col>
+            <b>Add channel</b>
+          </v-col>
+        </v-row>
+        <v-row>
+          <v-col>
 
-  <v-row>
-    <v-col>
-      <b>Channels</b>
-    </v-col>
-  </v-row>
-  <v-row>
-    <v-col>
-      <div v-for="file in selectedSample.files" :key="file">
-        <v-card class="ma-1" outlined color="#34495e" v-if="ch[file] != 'empty'">
-          <v-card-text>
-            <v-row>
-              <v-col cols="10">
-                <v-text-field v-model="ch_stain[file]" label="Stain description" dense></v-text-field>
-                </v-col>
-              <v-col cols="1">
-                <!-- Remove stain button -->
-                <v-btn icon @click="removeStain(file)">
-                  <v-icon>mdi-close</v-icon>
-                </v-btn>
-              </v-col>
-              </v-row>
-            <v-row>
-              <v-col>
-                <!-- Stain description, color selection, and gain adjustment -->
-                
-                <v-select v-model="ch[file]" :items="colorOptions" label="Channel color" dense @update:modelValue="settingsChanged"></v-select>
-                <v-slider v-model="gain[file]" :max="10" :min="0" :step="1" label="Gain" dense color="grey" @update:modelValue="settingsChanged"></v-slider>
-              </v-col>
-            </v-row>
-          </v-card-text>
-        </v-card>
+            <!-- Select stain to add and Add stain button -->
+            <v-select :items="stainOptions" v-model="addStainFileLocal" label="Select stain to add" item-value="file"
+              item-title="stain" @update:modelValue="addStain"></v-select>
+          </v-col>
+        </v-row>
       </div>
-    </v-col>
-  </v-row>
-  <v-row>
-  <v-col>
-      <b>Add channel</b>
-      </v-col>
-      </v-row>
-      <v-row>
-      <v-col>
-      
-      <!-- Select stain to add and Add stain button -->
-      <v-select :items="stainOptions" v-model="addStainFileLocal" label="Select stain to add" item-value="file" item-title="stain" @update:modelValue="addStain"></v-select>
-    </v-col>
-  </v-row>
-</v-container>
+      </v-container>
 
 
     </v-main>
@@ -367,10 +371,10 @@ div#view {
   margin: 0px;
 
 }
+
 .v-col {
   margin: 0px;
   padding-top: 1px;
   padding-bottom: 1px;
 }
-
 </style>
