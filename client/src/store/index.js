@@ -17,7 +17,7 @@ const store = createStore({
             slideSettingsShown: false,
             overlays: [],
             currentSlide: null, 
-            colorOptions: ["empty", "blue", "green", "red", "yellow", "cyan", "magenta", "white", "black"],
+            colorOptions: [],
             addStainFile: "", 
             viewportCenter: {x: 0.5, y: 0.5},
             viewportZoom: 1,
@@ -47,6 +47,7 @@ const store = createStore({
                     console.log("sample sheet: ", response.data.samples);
                     commit('SET_STATE_PROPERTY', { property:"samples", value: response.data.samples });
                     commit('SET_STATE_PROPERTY', { property:"saveEnabled", value: response.data.save });
+                    commit('SET_STATE_PROPERTY', { property:"colorOptions", value: response.data.colors });
                 })
         },
 

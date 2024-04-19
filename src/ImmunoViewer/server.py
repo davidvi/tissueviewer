@@ -21,12 +21,7 @@ cors = CORS(app)
 app.config['CORS_HEADERS'] = 'Content-Type'
 app.config['SLIDE_DIR'] = "/iv-store"
 app.config['SAVE'] = True
-
-current_folder = pathlib.Path(__file__).parent.resolve()
-
-def mix_channels(images, chs, gains):
-
-    color_mapping = {
+app.config['COLORS'] = {
         'green': (0, 255, 0),
         'red': (0, 0, 255),
         'blue': (255, 0, 0),
@@ -36,6 +31,13 @@ def mix_channels(images, chs, gains):
         'white': (255, 255, 255),
         'black': (0, 0, 0),
     }
+  
+
+current_folder = pathlib.Path(__file__).parent.resolve()
+
+def mix_channels(images, chs, gains):
+
+    color_mapping = app.config['COLORS']
 
     merged_image = np.zeros((*images[0].shape, 3), dtype=np.uint8)
 
@@ -102,6 +104,7 @@ def samples():
     buf = {}
     buf['samples'] = file_json
     buf['save'] = app.config['SAVE']
+    buf['colors'] = list(app.config['COLORS'].keys())
 
     resp = Response(json.dumps(buf), status=200, mimetype='application/json')
     return resp
