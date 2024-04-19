@@ -17,7 +17,7 @@ const store = createStore({
             slideSettingsShown: false,
             overlays: [],
             currentSlide: null, 
-            colorOptions: ["empty", "blue", "green", "red", "yellow", "cyan", "white", "black"],
+            colorOptions: ["empty", "blue", "green", "red", "yellow", "cyan", "magenta", "white", "black"],
             addStainFile: "", 
             viewportCenter: {x: 0.5, y: 0.5},
             viewportZoom: 1,
@@ -38,6 +38,7 @@ const store = createStore({
             bufStain[state.addStainFile] = "red";
             commit('SET_STATE_PROPERTY', { property:"ch", value: bufStain });
             dispatch('reloadSlide');
+            commit('SET_STATE_PROPERTY', { property:"addStainFile", value: "" });
         },
         loadSampleSheet({ commit }) {
             axios.get(`${baseUrl}/samples.json`)
@@ -90,7 +91,7 @@ const store = createStore({
             }).join(";");
 
             const gainString = state.selectedSample.files.map((file) => {
-                return state.gain[file] ? state.gain[file] : "1";
+                return state.gain[file] ? state.gain[file] : "0";
             }).join(";");
 
             const filesString = state.selectedSample.files.join(";");

@@ -19,6 +19,7 @@ app = Flask(__name__)
 
 cors = CORS(app)
 app.config['CORS_HEADERS'] = 'Content-Type'
+app.config['SLIDE_DIR'] = "/iv-store"
 
 current_folder = pathlib.Path(__file__).parent.resolve()
 
@@ -30,6 +31,7 @@ def mix_channels(images, chs, gains):
         'blue': (255, 0, 0),
         'yellow': (0, 255, 255),
         'cyan': (255, 255, 0),
+        'magenta': (255, 0, 255),
         'white': (255, 255, 255),
         'black': (0, 0, 0),
     }
@@ -51,7 +53,6 @@ def find_directories_with_files_folders(base_dir):
         if root.count(os.sep) - base_dir.count(os.sep) >= 2:
             del dirs[:]
         for dirname in dirs:
-            print(dirname)
             if dirname.endswith("_files"):
                 buf = {}
                 buf['name'] = os.path.relpath(root, base_dir)
@@ -61,8 +62,8 @@ def find_directories_with_files_folders(base_dir):
 
                 buf['details'] = {}
 
-                if os.path.isfile(f'{root}.json'):
-                        with open(f'{root}.json', 'r') as f:
+                if os.path.isfile(os.path.join(f'{root}','sample.json')):
+                        with open(os.path.join(f'{root}','sample.json'), 'r') as f:
                             data = json.load(f)
                             buf['details'] = data
                 break
@@ -166,7 +167,7 @@ def save_note(file):
     if request.method == 'POST':
         data = json.loads(request.data)
 
-        with open(os.path.abspath(os.path.join(app.config['SLIDE_DIR'], f'{file}.json')), 'w') as f:
+        with open(os.path.abspath(os.path.join(app.config['SLIDE_DIR'], f'{file}', 'sample.json')), 'w') as f:
             json.dump(data, f)
 
     return "OK"
@@ -199,6 +200,9 @@ def main():
     except IndexError:
         if app.config['SLIDE_DIR'] is None:
             parser.error('No slide file specified')
+            # app.config['SLIDE_DIR'] = "/iv-store"
+
+    print(app.config['SLIDE_DIR'])
 
     app.run(host=opts.host, port=opts.port, threaded=True, debug=True)
 
