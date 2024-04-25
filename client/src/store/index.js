@@ -48,6 +48,7 @@ const store = createStore({
                     commit('SET_STATE_PROPERTY', { property:"samples", value: response.data.samples });
                     commit('SET_STATE_PROPERTY', { property:"saveEnabled", value: response.data.save });
                     commit('SET_STATE_PROPERTY', { property:"colorOptions", value: response.data.colors });
+                    commit('SET_STATE_PROPERTY', { property:"selectedSampleName", value: response.data.samples[0].name });
                 })
         },
 

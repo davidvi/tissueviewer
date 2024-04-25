@@ -1,18 +1,13 @@
 from io import BytesIO
-from collections import OrderedDict
 from optparse import OptionParser
 import os
-from threading import Lock
-import re
-from unicodedata import normalize
 import json
 import cv2
-import matplotlib.pyplot as plt
 import numpy as np
 import pathlib
 from xml.etree import ElementTree as ET
 
-from flask import Flask, render_template, Response, request, send_from_directory, send_file
+from flask import Flask, Response, request, send_from_directory, send_file
 from flask_cors import CORS, cross_origin
 
 app = Flask(__name__)
@@ -20,7 +15,7 @@ app = Flask(__name__)
 cors = CORS(app)
 app.config['CORS_HEADERS'] = 'Content-Type'
 app.config['SLIDE_DIR'] = "/iv-store"
-app.config['SAVE'] = True
+app.config['SAVE'] = False
 app.config['COLORS'] = {
         'green': (0, 255, 0),
         'red': (0, 0, 255),
@@ -32,10 +27,16 @@ app.config['COLORS'] = {
         'black': (0, 0, 0),
     }
   
-
 current_folder = pathlib.Path(__file__).parent.resolve()
 
-def mix_channels(images, chs, gains):
+def mix_channels(images, chs, gains) -> np.ndarray:
+    """
+    Mixes multiple images into one by applying color mapping to each channel
+    :param images: list of images to mix
+    :param chs: list of channels to mix
+    :param gains: list of gains to apply to each channel
+    :return: merged image
+    """
 
     color_mapping = app.config['COLORS']
 
@@ -49,7 +50,12 @@ def mix_channels(images, chs, gains):
 
     return merged_image
 
-def find_directories_with_files_folders(base_dir):
+def find_directories_with_files_folders(base_dir) -> list:
+    """
+    Finds all directories with _files suffix and returns them as a list of dictionaries
+    :param base_dir: base directory to search in
+    :return: list of dictionaries with directory name and files
+    """
     directories_with_files = []
 
     for root, dirs, files in os.walk(base_dir):
@@ -70,10 +76,14 @@ def find_directories_with_files_folders(base_dir):
                             data = json.load(f)
                             buf['details'] = data
                 break
-    print(directories_with_files)
     return directories_with_files
 
-def modify_dzi_format(dzi_file_path):
+def modify_dzi_format(dzi_file_path) -> str:
+    """
+    Modifies the DZI file format from TIFF to JPEG
+    :param dzi_file_path: path to the DZI file
+    :return: modified DZI file content
+    """
     with open(dzi_file_path, 'r') as file:
         dzi_content = file.read()
 
@@ -165,7 +175,6 @@ def open_json(file):
     resp = Response(json.dumps(data), mimetype='application/json')
     return resp
 
-
 @app.route('/save/<path:file>', methods=['GET', 'POST'])
 @cross_origin()
 def save_note(file):
@@ -217,8 +226,6 @@ def main():
             # app.config['SLIDE_DIR'] = "/iv-store"
 
     app.config['SAVE'] = opts.save
-
-    print("save: ", app.config['SAVE'])
 
     app.run(host=opts.host, port=opts.port, threaded=True, debug=True)
 

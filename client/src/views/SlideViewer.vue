@@ -31,6 +31,14 @@
             </v-btn>
           </v-col>
         </v-row>
+        <div v-if="!samples.length">
+        <v-row>
+          <v-col>
+              <v-progress-circular indeterminate color="primary"></v-progress-circular>
+          </v-col>
+          </v-row>
+        </div>
+        <div v-else>
         <v-row>
           <v-col>
             <v-select :items="samples" v-model="selectedSampleNameLocal" label="Select slide" item-value="name"
@@ -87,6 +95,7 @@
               item-title="stain" @update:modelValue="addStain"></v-select>
           </v-col>
         </v-row>
+      </div>
       </div>
       </v-container>
 
@@ -205,7 +214,7 @@ export default {
         animationTime: 1, //0.5
         blendTime: 1, //0.1
         constrainDuringPan: true,
-        maxZoomPixelRatio: 1, //2
+        maxZoomPixelRatio: 3, //2
         minZoomImageRatio: 1,
         visibilityRatio: 1,
         zoomPerScroll: 2,
