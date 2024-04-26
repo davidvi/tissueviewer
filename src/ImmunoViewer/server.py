@@ -1,22 +1,33 @@
+import pathlib
 from io import BytesIO
-from optparse import OptionParser
 import os
 import json
 import cv2
 import numpy as np
-import pathlib
-from xml.etree import ElementTree as ET
+from pydantic_settings import BaseSettings
 
-from flask import Flask, Response, request, send_from_directory, send_file
-from flask_cors import CORS, cross_origin
+from helpers.server_helpers import *
 
-app = Flask(__name__)
+from fastapi import FastAPI, Request, HTTPException, Path, status
+from fastapi.responses import FileResponse, JSONResponse, Response, PlainTextResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 
-cors = CORS(app)
-app.config['CORS_HEADERS'] = 'Content-Type'
-app.config['SLIDE_DIR'] = "/iv-store"
-app.config['SAVE'] = False
-app.config['COLORS'] = {
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+class Settings(BaseSettings):
+    SLIDE_DIR: str = "/iv-store"
+    SAVE: bool = False
+    COLORS: dict = {
         'green': (0, 255, 0),
         'red': (0, 0, 255),
         'blue': (255, 0, 0),
@@ -26,111 +37,71 @@ app.config['COLORS'] = {
         'white': (255, 255, 255),
         'black': (0, 0, 0),
     }
-  
+    class Config:
+        env_prefix = "IV_"
+
+settings = Settings()
+
 current_folder = pathlib.Path(__file__).parent.resolve()
+client_dir = os.path.join(current_folder, "client")
+slide_dir = pathlib.Path(settings.SLIDE_DIR)
 
-def mix_channels(images, chs, gains) -> np.ndarray:
+app.mount("/assets", StaticFiles(directory=os.path.join(client_dir, "assets")), name="assets")
+app.mount("/images", StaticFiles(directory=os.path.join(client_dir, "images")), name="images")
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    return FileResponse(os.path.join(client_dir, 'favicon.ico'))
+
+@app.get("/", include_in_schema=False)
+async def read_root():
+    # Serve index.html for the root
+    return FileResponse(os.path.join(client_dir, 'index.html'))
+
+@app.get('/samples.json')
+async def samples():
+    print("looking in ", os.path.abspath(settings.SLIDE_DIR))
+    try:
+        file_json = find_directories_with_files_folders(os.path.abspath(settings.SLIDE_DIR))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    buf = {
+        "samples": file_json,
+        "save": settings.SAVE,
+        "colors": list(settings.COLORS.keys())
+    }
+
+    return JSONResponse(content=buf, status_code=200)
+
+@app.get("/{files}/{chs}/{gains}/{file}.dzi")
+async def get_dzi(files: str, chs: str, gains: str, file: str):
     """
-    Mixes multiple images into one by applying color mapping to each channel
-    :param images: list of images to mix
-    :param chs: list of channels to mix
-    :param gains: list of gains to apply to each channel
-    :return: merged image
+    Get the DZI file
     """
-
-    color_mapping = app.config['COLORS']
-
-    merged_image = np.zeros((*images[0].shape, 3), dtype=np.uint8)
-
-    for image, ch, gain in zip(images, chs, gains):
-        color_rgb = color_mapping[ch]
-        enhanced_image = cv2.convertScaleAbs(image, alpha=gain)
-        colored_image = cv2.merge([enhanced_image * (color_rgb[i] // 255) for i in range(3)])
-        merged_image = cv2.add(merged_image, colored_image)
-
-    return merged_image
-
-def find_directories_with_files_folders(base_dir) -> list:
-    """
-    Finds all directories with _files suffix and returns them as a list of dictionaries
-    :param base_dir: base directory to search in
-    :return: list of dictionaries with directory name and files
-    """
-    directories_with_files = []
-
-    for root, dirs, files in os.walk(base_dir):
-        if root.count(os.sep) - base_dir.count(os.sep) >= 2:
-            del dirs[:]
-        for dirname in dirs:
-            if dirname.endswith("_files"):
-                buf = {}
-                buf['name'] = os.path.relpath(root, base_dir)
-                dirs.sort()
-                buf['files'] = dirs
-                directories_with_files.append(buf)
-
-                buf['details'] = {}
-
-                if os.path.isfile(os.path.join(f'{root}','sample.json')):
-                        with open(os.path.join(f'{root}','sample.json'), 'r') as f:
-                            data = json.load(f)
-                            buf['details'] = data
-                break
-    return directories_with_files
-
-def modify_dzi_format(dzi_file_path) -> str:
-    """
-    Modifies the DZI file format from TIFF to JPEG
-    :param dzi_file_path: path to the DZI file
-    :return: modified DZI file content
-    """
-    with open(dzi_file_path, 'r') as file:
-        dzi_content = file.read()
-
-    tree = ET.ElementTree(ET.fromstring(dzi_content))
-    root = tree.getroot()
-
-    if root.attrib['Format'].lower() == 'tiff':
-        root.attrib['Format'] = 'jpeg'
-
-    modified_dzi_str = ET.tostring(root, encoding='unicode')
-    
-    return modified_dzi_str
-
-@app.route('/', defaults={'path': ''})
-@app.route('/<path:path>')
-@cross_origin()
-def index(path):
-    if path and (path.startswith('assets') or path.startswith('favicon') or path.startswith('images')):
-        return send_from_directory(os.path.join(current_folder, "client"), path)
-    else:
-        return send_from_directory(os.path.join(current_folder, "client"), 'index.html')
-
-@app.route('/samples.json')
-@cross_origin()
-def samples():
-    file_json = find_directories_with_files_folders(os.path.abspath(app.config['SLIDE_DIR']))
-
-    buf = {}
-    buf['samples'] = file_json
-    buf['save'] = app.config['SAVE']
-    buf['colors'] = list(app.config['COLORS'].keys())
-
-    resp = Response(json.dumps(buf), status=200, mimetype='application/json')
-    return resp
-
-@app.route('/<string:files>/<string:chs>/<string:gains>/<path:file>.dzi')
-@cross_origin()
-def dzi(files, chs, gains, file):
     files = files.split(';')
-    path_to_dzi = os.path.join(os.path.abspath(app.config['SLIDE_DIR']), file, f'{files[0].replace("_files", "")}.dzi')
-    dzi_content = modify_dzi_format(os.path.join(path_to_dzi))
-    resp = Response(dzi_content, status=200, mimetype='application/xml')
-    return resp
+    path_to_dzi = os.path.join(os.path.abspath(settings.SLIDE_DIR), file, f"{files[0].replace('_files', '')}.dzi")
+    
+    try:
+        dzi_content = modify_dzi_format(path_to_dzi)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.route('/<string:files>/<string:chs>/<string:gains>/<path:file>_files/<int:level>/<string:loc>')
-@cross_origin()
-def tile(files, chs, gains, file, level, loc):
+    return Response(content=dzi_content, media_type="application/xml", status_code=200)
+
+@app.get("/{files}/{chs}/{gains}/{file}_files/{level}/{loc}")
+async def get_tile(
+    files: str, 
+    chs: str, 
+    gains: str, 
+    file: str = Path(..., description="The base name of the file without extension"),
+    level: int = Path(..., description="The image pyramid level"), 
+    loc: str = Path(..., description="Location of the tile with extension")
+):
+    """
+    Get a tile from the slide
+    """
+
     loc = loc.replace('.jpeg', '.tiff')
     files = files.split(';') 
     chs = chs.split(';')
@@ -138,96 +109,53 @@ def tile(files, chs, gains, file, level, loc):
     gains = [int(x) for x in gains]
 
     if len(files) == 1:
-        merged_image = cv2.imread(os.path.abspath(os.path.join(app.config['SLIDE_DIR'], file, f'{files[0]}', str(level), loc)))
+        file_path = slide_dir / file / f'{files[0]}' / str(level) / loc
+        merged_image = cv2.imread(str(file_path))
     else:
         merge_images = []
         merge_chs = []
         merge_gains = []
+
+
+
         for i, ch in enumerate(chs):
             if ch != 'empty':
-                buf = cv2.imread(os.path.abspath(os.path.join(app.config['SLIDE_DIR'], file, f'{files[i]}', str(level), loc)))
+
+                file_path = slide_dir / file / f'{files[i]}' / str(level) / loc
+                buf = cv2.imread(str(file_path))
+
                 buf = cv2.cvtColor(buf, cv2.COLOR_BGR2GRAY)
                 merge_images.append(buf)
                 merge_chs.append(ch)
                 merge_gains.append(gains[i])
 
+
         if len(merge_images) == 0:
             merged_image = np.zeros((256, 256), dtype=np.uint8)
         else:
-            merged_image = mix_channels(merge_images, merge_chs, merge_gains)
+            merged_image = mix_channels(merge_images, merge_chs, merge_gains, settings.COLORS)
 
     img_bytes = cv2.imencode('.jpeg', merged_image)[1].tobytes()
     img_io = BytesIO(img_bytes)
 
-    return send_file(img_io, mimetype='image/jpeg')
+    return Response(content=img_io.getvalue(), media_type='image/jpeg')
 
-@app.route('/read/<path:file>')
-@cross_origin()
-def open_json(file):
-    if os.path.isfile(os.path.abspath(os.path.join(app.config['SLIDE_DIR'], f'{file}.json'))):
-        # Read the JSON file
-        with open(os.path.abspath(os.path.join(app.config['SLIDE_DIR'], f'{file}.json')), 'r') as f:
-            data = json.load(f)
+@app.post("/save/{file:path}", response_class=PlainTextResponse)
+async def save_slide_settings(file: str, request: Request):
+    """
+    Save the slide settings
+    """
+    if settings.SAVE:
+        try:
+            data = await request.json()
+        except json.JSONDecodeError:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid JSON")
 
-    else: 
-        data = {"notes": "", "name": "", "stains": ""}; 
+        file_path = slide_dir / file / 'sample.json'
 
-    resp = Response(json.dumps(data), mimetype='application/json')
-    return resp
-
-@app.route('/save/<path:file>', methods=['GET', 'POST'])
-@cross_origin()
-def save_note(file):
-    if request.method == 'POST' and app.config['SAVE']:
-        data = json.loads(request.data)
-
-        with open(os.path.abspath(os.path.join(app.config['SLIDE_DIR'], f'{file}', 'sample.json')), 'w') as f:
+        with open(file_path, 'w') as f:
             json.dump(data, f)
 
         return "OK"
     else:
-        return "SAVE BLOCKED"
-
-def main():
-    parser = OptionParser(usage='Usage: %prog [options] [folder]')
-
-    parser.add_option(
-        '-l',
-        '--listen',
-        metavar='ADDRESS',
-        dest='host',
-        default='0.0.0.0',
-        help='address to listen on [0.0.0.0]',
-    )
-    parser.add_option(
-        '-p',
-        '--port',
-        metavar='PORT',
-        dest='port',
-        type='int',
-        default=5000,
-        help='port to listen on [5000]',
-    )
-    parser.add_option(
-        '-n', '--no-save',
-        dest='save',
-        action='store_false',
-        default=True,
-        help='disable saving user changes',
-    )
-
-    (opts, args) = parser.parse_args()
-
-    try:
-        app.config['SLIDE_DIR'] = args[0]
-    except IndexError:
-        if app.config['SLIDE_DIR'] is None:
-            parser.error('No slide file specified')
-            # app.config['SLIDE_DIR'] = "/iv-store"
-
-    app.config['SAVE'] = opts.save
-
-    app.run(host=opts.host, port=opts.port, threaded=True, debug=True)
-
-if __name__ == '__main__':
-    main()
+        return PlainTextResponse("SAVE BLOCKED", status_code=status.HTTP_403_FORBIDDEN)

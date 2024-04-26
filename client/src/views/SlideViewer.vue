@@ -95,6 +95,20 @@
               item-title="stain" @update:modelValue="addStain"></v-select>
           </v-col>
         </v-row>
+        <v-row>
+          <v-col>
+            <b>Share</b>
+          </v-col>
+        </v-row>
+        <v-row>
+          <v-col>
+            <v-btn icon>
+        <a :href="`?sample=${selectedSampleName}`" target="_blank">
+          <v-icon color="white">mdi-share</v-icon>
+        </a>
+      </v-btn>
+          </v-col>
+        </v-row>
       </div>
       </div>
       </v-container>
@@ -307,9 +321,8 @@ export default {
 
   },
   mounted() {
-
     this.loadOpenSeaDragon();
-    this.loadSampleSheet();
+    this.loadSampleSheet(this.$route.query.sample);
   },
 }
 </script>

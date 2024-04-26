@@ -41,14 +41,14 @@ const store = createStore({
             dispatch('reloadSlide');
             commit('SET_STATE_PROPERTY', { property:"addStainFile", value: "" });
         },
-        loadSampleSheet({ commit }) {
+        loadSampleSheet({ commit }, sample) {
             axios.get(`${baseUrl}/samples.json`)
                 .then(response => {
                     console.log("sample sheet: ", response.data.samples);
                     commit('SET_STATE_PROPERTY', { property:"samples", value: response.data.samples });
                     commit('SET_STATE_PROPERTY', { property:"saveEnabled", value: response.data.save });
                     commit('SET_STATE_PROPERTY', { property:"colorOptions", value: response.data.colors });
-                    commit('SET_STATE_PROPERTY', { property:"selectedSampleName", value: response.data.samples[0].name });
+                    commit('SET_STATE_PROPERTY', { property:"selectedSampleName", value: sample ? sample : response.data.samples[0].name });
                 })
         },
 
