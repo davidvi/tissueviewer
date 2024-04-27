@@ -95,6 +95,37 @@
               item-title="stain" @update:modelValue="addStain"></v-select>
           </v-col>
         </v-row>
+        <!-- ANNOTATIONS -->
+        <v-row>
+          <v-col>
+            <b>Annotations</b>
+          </v-col>
+        </v-row>
+        <v-row>
+          <v-col>
+            <div>
+              <v-card class="ma-1" outlined color="#34495e" v-for="overlay in overlays" :key="overlay.number">
+                <v-card-text>
+                  <v-row>
+                    <v-col cols="1">
+                      <p>{{ overlay.number }}</p>
+                    </v-col>
+                    <v-col cols="9">
+                      <v-text-field v-model="overlay.description" label="Annotation" dense></v-text-field>
+                    </v-col>
+                    <v-col cols="1">
+                      <!-- Remove annotation button -->
+                      <v-btn icon @click="overlays.splice(overlays.indexOf(overlay), 1)">
+                        <v-icon>mdi-close</v-icon>
+                      </v-btn>
+                    </v-col>
+                  </v-row>
+                </v-card-text>
+              </v-card>
+            </div>
+          </v-col>
+        </v-row>
+        <!-- SLIDE SHARE CONTROLS -->
         <v-row>
           <v-col>
             <b>Share</b>
@@ -226,7 +257,8 @@ export default {
         prefixUrl: "images/",
         timeout: 120000, //120000
         animationTime: 1, //0.5
-        blendTime: 1, //0.1
+        blendTime: 0.5, //0.1
+        showRotationControl: true,
         constrainDuringPan: true,
         maxZoomPixelRatio: 3, //2
         minZoomImageRatio: 1,
@@ -265,7 +297,7 @@ export default {
                 console.log(this.overlays);
 
                 //Add overlay, disabled for now
-                // this.addOverlay(elementCoordiantes.x, elementCoordiantes.y, this.overlays[this.overlays.length - 1].number);
+                this.addOverlay(elementCoordiantes.x, elementCoordiantes.y, this.overlays[this.overlays.length - 1].number);
               },
             });
           });
