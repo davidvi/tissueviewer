@@ -2,7 +2,6 @@ import os
 import time
 import sys
 import argparse
-import subprocess
 from pathlib import Path
 from threading import Thread
 

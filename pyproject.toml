@@ -1,0 +1,75 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ImmunoViewer"
+version = "0.1.6"
+authors = [{ name = "David van IJzendoorn", email = "davidvanijzendoorn@gmail.com" }]
+description = "Explore and annotate your multi-channel large TIF files with this user-friendly viewer."
+keywords = ["big tif", "immuno", "viewer", "annotate", "annotation", "discover", "discovery", "image", "images", "tif", "tiff", "multi-channel", "multi c"]
+readme = "README.md"
+license = { text = "MIT" }
+urls = {
+    "Homepage" = "https://github.com/davidvi/ImmunoViewer",
+    "Documentation" = "https://github.com/davidvi/ImmunoViewer",
+    "Bug Reports" = "https://github.com/davidvi/ImmunoViewer/issues",
+    "Source Code" = "https://github.com/davidvi/ImmunoViewer"
+}
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Intended Audience :: End Users/Desktop",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.6",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3 :: Only",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "click==8.1.3",
+    "contourpy==1.0.7",
+    "cycler==0.11.0",
+    "fonttools==4.39.0",
+    "itsdangerous==2.1.2",
+    "jinja2==3.1.2",
+    "kiwisolver==1.4.4",
+    "markupsafe==2.1.2",
+    "matplotlib==3.7.1",
+    "numpy==1.24.2",
+    "pillow==9.4.0",
+    "pyparsing==3.0.9",
+    "werkzeug==2.2.3",
+    "watchdog==4.0.0",
+    "aicsimageio==4.14.0",
+    "opencv-python==4.7.0.72",
+    "gunicorn==22.0.0",
+    "fastapi==0.110.2",
+    "uvicorn==0.29.0",
+    "pydantic-settings==2.2.1"
+]
+
+python-requirements = ">=3.6"
+
+[project.scripts]
+ImmunoViewerProcess = "ImmunoViewer.process_folder:main"
+ImmunoViewerServer = "ImmunoViewer.server:main"
+
+[project.optional-dependencies]
+test = [
+    "pytest>=6.0",
+    "mock>=4.0"
+]
+
+[project.packages]
+include = ["src/**/*"]
+exclude = ["src/tests/**"]
+
+[project.data-files.ImmunoViewer]
+include = ["client/**/*"]

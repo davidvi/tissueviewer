@@ -27,5 +27,8 @@ EXPOSE 8080
 ENV WORKERS 1
 ENV THREADS 8
 
+ENV IV_SAVE True
+ENV IV_SLIDE_DIR /iv-store
+
 # Run the application using Gunicorn
-CMD exec gunicorn --workers $WORKERS --threads $THREADS -b :$PORT server:app
+CMD exec gunicorn --workers $WORKERS --threads $THREADS -b :$PORT -k uvicorn.workers.UvicornWorker server:app

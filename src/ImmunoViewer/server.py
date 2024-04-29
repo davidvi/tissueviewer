@@ -13,6 +13,8 @@ from fastapi.responses import FileResponse, JSONResponse, Response, PlainTextRes
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
+import uvicorn
+import argparse
 
 app = FastAPI()
 
@@ -41,6 +43,27 @@ class Settings(BaseSettings):
         env_prefix = "IV_"
 
 settings = Settings()
+
+def main(host="127.0.0.1", port=8000, reload=False):
+    """Run the API server with Uvicorn."""
+    uvicorn.run("server:app", host=host, port=port, reload=reload)
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Run ImmunoViewer server.")
+    parser.add_argument("--host", type=str, default="127.0.0.1", help="Host for the API server")
+    parser.add_argument("--port", type=int, default=8000, help="Port for the API server")
+    parser.add_argument("--reload", action="store_true", help="Enable automatic reload")
+    parser.add_argument("--save", action="store_true", help="Enable saving of slide settings")
+    parser.add_argument("--slide-dir", type=str, help="Directory to store slide files")
+    args = parser.parse_args()
+
+    if args.save:
+        settings.SAVE = True
+
+    if args.slide_dir:
+        settings.SLIDE_DIR = args.slide_dir
+        
+    main(host=args.host, port=args.port, reload=args.reload)
 
 current_folder = pathlib.Path(__file__).parent.resolve()
 client_dir = os.path.join(current_folder, "client")

@@ -35,7 +35,7 @@
   <!-- IF LOADING -->
   <div v-if="!samples.length" class="p-4">
     <div class="flex justify-center">
-      <strong class="whiet">Loading..</strong>
+      <strong class="text-white">Loading..</strong>
     </div>
   </div>
   <!-- IF NOT LOADING -->
