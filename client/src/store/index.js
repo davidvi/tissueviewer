@@ -72,11 +72,19 @@ const store = createStore({
         },
 
         deleteOverlay({state, commit, dispatch}, index) {
+
+            console.log("removing overlay: ", index)
+
             let bufOverlays = state.overlays;
-            bufOverlays.splice(index, 1);
+            // bufOverlays.splice(index, 1);
+
+            bufOverlays = bufOverlays.filter(overlay => overlay.number !== index);
+
+            console.log("new overlays: ", bufOverlays)
+
             commit('SET_STATE_PROPERTY', { property:"overlays", value: bufOverlays });
 
-            dispatch('reloadSlide');
+            // dispatch('reloadSlide');
         },
 
         removeStain({state, commit, dispatch}, file) {
