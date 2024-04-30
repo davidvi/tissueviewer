@@ -6,7 +6,7 @@ import cv2
 import numpy as np
 from pydantic_settings import BaseSettings
 
-from helpers.server_helpers import *
+from ImmunoViewer.helpers.server_helpers import *
 
 from fastapi import FastAPI, Request, HTTPException, Path, status
 from fastapi.responses import FileResponse, JSONResponse, Response, PlainTextResponse
@@ -46,7 +46,7 @@ settings = Settings()
 
 def main(host="127.0.0.1", port=8000, reload=False):
     """Run the API server with Uvicorn."""
-    uvicorn.run("server:app", host=host, port=port, reload=reload)
+    uvicorn.run("ImmunoViewer.server:app", host=host, port=port, reload=reload)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run ImmunoViewer server.")

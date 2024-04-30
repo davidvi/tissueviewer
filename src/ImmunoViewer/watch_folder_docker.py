@@ -4,8 +4,8 @@ import sys
 import argparse
 from pathlib import Path
 
-from helpers.process_ome_tiff import process_ome_tiff
-from helpers.process_tiff import process_tiff
+from ImmunoViewer.helpers.process_ome_tiff import process_ome_tiff
+from ImmunoViewer.helpers.process_tiff import process_tiff
 
 def main():
     print("Starting ImmunoViewer watch folder")
