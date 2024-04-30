@@ -17,11 +17,12 @@ const store = createStore({
             slideSettingsShown: false,
             overlays: [],
             currentSlide: null, 
-            colorOptions: ["empty", "blue", "green", "red", "yellow", "cyan", "magenta", "white", "black"],
+            colorOptions: [],
             addStainFile: "", 
             viewportCenter: {x: 0.5, y: 0.5},
             viewportZoom: 1,
             viewportBounds: null, 
+            saveEnabled: false,
         }
     },
     mutations: {
@@ -40,12 +41,14 @@ const store = createStore({
             dispatch('reloadSlide');
             commit('SET_STATE_PROPERTY', { property:"addStainFile", value: "" });
         },
-        loadSampleSheet({ commit }) {
+        loadSampleSheet({ commit }, sample) {
             axios.get(`${baseUrl}/samples.json`)
                 .then(response => {
                     console.log("sample sheet: ", response.data.samples);
                     commit('SET_STATE_PROPERTY', { property:"samples", value: response.data.samples });
-
+                    commit('SET_STATE_PROPERTY', { property:"saveEnabled", value: response.data.save });
+                    commit('SET_STATE_PROPERTY', { property:"colorOptions", value: response.data.colors });
+                    commit('SET_STATE_PROPERTY', { property:"selectedSampleName", value: sample ? sample : response.data.samples[0].name });
                 })
         },
 
@@ -69,11 +72,19 @@ const store = createStore({
         },
 
         deleteOverlay({state, commit, dispatch}, index) {
+
+            console.log("removing overlay: ", index)
+
             let bufOverlays = state.overlays;
-            bufOverlays.splice(index, 1);
+            // bufOverlays.splice(index, 1);
+
+            bufOverlays = bufOverlays.filter(overlay => overlay.number !== index);
+
+            console.log("new overlays: ", bufOverlays)
+
             commit('SET_STATE_PROPERTY', { property:"overlays", value: bufOverlays });
 
-            dispatch('reloadSlide');
+            // dispatch('reloadSlide');
         },
 
         removeStain({state, commit, dispatch}, file) {

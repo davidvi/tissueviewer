@@ -23,10 +23,15 @@ COPY src /src
 WORKDIR /src/ImmunoViewer
 
 # Expose port (optional, adjust as needed)
+ENV PORT=8000
 EXPOSE 8000
 
 # Define environment variable for number of worker processes
-ENV WORKER_PROCESSES=8
+ENV WORKERS=8
+ENV THREADS=1
+
+ENV IV_SAVE=True
+ENV IV_SLIDE_DIR=/iv-store
 
 # Run the application using Gunicorn
-CMD exec gunicorn -w $WORKER_PROCESSES -b 0.0.0.0:8000 server:app & python watch_folder_docker.py
+CMD exec gunicorn --workers $WORKERS --threads $THREADS -b :$PORT -k uvicorn.workers.UvicornWorker server:app & python watch_folder_docker.py
