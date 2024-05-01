@@ -162,3 +162,5 @@ data/
 #.idea/
 
 .DS_Store
+
+_version.py

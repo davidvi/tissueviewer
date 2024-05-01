@@ -82,7 +82,7 @@ ImmunoViewerWatch [data_directory] [processed_directory]
 Launch the viewer server with the following command:
 
 ```bash
-ImmunoViewerServer --port [port (default is 8000)] --host [IP address (default = 0.0.0.0)] [processed_directory]
+ImmunoViewerServe --port [port (default is 8000)] --host [IP address (default = 0.0.0.0)] [processed_directory]
 ```
 
 Access the viewer by navigating to `http://[IP address]:[port]` in your web browser. Note: If you use the default IP address (0.0.0.0), ensure the port is properly secured if exposed over the network.
