@@ -12,6 +12,7 @@ Explore and annotate your multi-channel, large TIF files with this user-friendly
     - [Folder Structure](#folder-structure)
     - [Generate Tiles](#generate-tiles)
     - [Run the Viewer](#run-the-viewer)
+    - [Run as Docker](#run-as-docker)
     - [Deploy in cloud](#cloud-deploy)
 - [Acknowledgements](#acknowledgements)
 
@@ -86,6 +87,34 @@ ImmunoViewerServe --port [port (default is 8000)] --host [IP address (default = 
 ```
 
 Access the viewer by navigating to `http://[IP address]:[port]` in your web browser. Note: If you use the default IP address (0.0.0.0), ensure the port is properly secured if exposed over the network.
+
+### Run as Docker
+
+To run ImmunoViewer within a Docker container, follow these steps. This setup allows you to run the viewer and automatically watch a folder for new image files, which will then be processed into multiple deep zoom images.
+
+1. **Build the Docker Image**
+
+   Start by building the Docker image from your Dockerfile. This image will include all the necessary dependencies and configurations to run ImmunoViewer.
+
+   ```bash
+   docker build -t iv .
+   ```
+
+2. **Run the Docker Container**
+
+   Run the Docker container by mapping your local directories to the appropriate directories within the container. This allows the application to access and store data on your local machine.
+
+   - `-p 8080:8080` maps the port 8080 of the container to port 8080 on your host, allowing you to access the viewer via `localhost:8080`.
+   - `-v /your/local/import/directory:/iv-import` maps your local directory for importing images to the corresponding directory in the container.
+   - `-v /your/local/storage/directory:/iv-store` maps your local directory for storing processed images to the corresponding directory in the container.
+
+   Run the following command, replacing `/your/local/import/directory` and `/your/local/storage/directory` with the paths to your actual directories:
+
+   ```bash
+   docker run -p 8080:8080 -v /your/local/import/directory:/iv-import -v /your/local/storage/directory:/iv-store iv
+   ```
+
+After executing these steps, ImmunoViewer will be running inside the Docker container, monitoring the specified import directory for new files to process, and accessible through your web browser at `http://localhost:8080`.
 
 ### Cloud deploy
 
