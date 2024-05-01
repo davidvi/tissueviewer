@@ -9,8 +9,8 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "ImmunoViewer"
 license = {file = "LICENSE.md"}
-dynamic = ["version"]
-# version = "0.2.3"
+# dynamic = ["version"]
+version = "0.2.5"
 authors = [{ name = "David van IJzendoorn", email = "davidvanijzendoorn@gmail.com" }]
 description = "Explore and annotate your multi-channel large TIF files with this user-friendly viewer."
 keywords = ["big tif", "immuno", "viewer", "annotate", "annotation", "discover", "discovery", "image", "images", "tif", "tiff", "multi-channel", "multi c"]
