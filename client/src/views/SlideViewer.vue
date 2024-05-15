@@ -9,6 +9,18 @@
 <!-- VIEW -->
 <div id="view" class="w-screen h-screen"></div>
 
+<!-- HUD -->
+<div id="hud" class="fixed bottom-5 left-5 w-40 max-h-60 overflow-y-auto bg-black bg-opacity-70 p-2 rounded-md text-white">
+  <h3 class="text-lg font-semibold mb-2">Stains</h3>
+  <div v-for="file in selectedSample.files" :key="file" class="mb-2">
+    <div class="flex items-center space-x-2">
+      <div class="w-4 h-4 rounded-full" :style="{ backgroundColor: ch[file] }"></div>
+      <p>{{ ch_stain[file] }}</p>
+    </div>
+  </div>
+</div>
+<!-- END HUD -->
+
 <!-- NAVIGATION -->
 <div id="navigation-menu" class="rounded text-gray-800 bg-gray-600">
   <div class="flex items-center justify-between p-4">
@@ -231,7 +243,7 @@ export default {
         maxZoomPixelRatio: 3, //2
         minZoomImageRatio: 1,
         visibilityRatio: 1,
-        zoomPerScroll: 2,
+        zoomPerScroll: 2, //2
         showNavigationControl: true,
         navigationControlAnchor: OpenSeadragon.ControlAnchor.TOP_LEFT,
       });
@@ -357,19 +369,17 @@ div#view {
     color: #d8d8d8;
 }
 
+#hud {
+  z-index: 1000;
+}
+
 #navigation-menu {
   z-index: 1000;
-  /* background-color: #2c3e50; */
-  /* color: #ecf0f1; */
-  /* padding: 10px; */
-  /* border-radius: 4px; */
   position: fixed;
   top: 5vh;
   right: 1vw;
-  /* box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3); */
   width: 25vw;
   max-height: 90vh;
   overflow-y: auto;
-  /* font-family: Arial, sans-serif; */
 }
 </style>
