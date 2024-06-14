@@ -10,12 +10,14 @@
 <div id="view" class="w-screen h-screen"></div>
 
 <!-- HUD -->
-<div id="hud" class="fixed bottom-5 left-5 w-40 max-h-60 overflow-y-auto bg-black bg-opacity-70 p-2 rounded-md text-white">
+<div id="hud" class="fixed bottom-5 left-5 max-w-60 max-h-60 overflow-y-auto bg-black bg-opacity-70 p-2 rounded-md text-white">
   <h3 class="text-lg font-semibold mb-2">Stains</h3>
   <div v-for="file in selectedSample.files" :key="file" class="mb-2">
-    <div class="flex items-center space-x-2">
-      <div class="w-4 h-4 rounded-full" :style="{ backgroundColor: ch[file] }"></div>
-      <p>{{ ch_stain[file] }}</p>
+    <div v-if="ch[file] != 'empty'">
+      <div class="flex items-center space-x-2">
+        <div class="w-4 h-4 rounded-full" :style="{ backgroundColor: ch[file] }"></div>
+        <p>{{ ch_stain[file] }}</p>
+      </div>
     </div>
   </div>
 </div>
