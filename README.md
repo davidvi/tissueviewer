@@ -9,9 +9,6 @@ Explore and annotate your multi-channel, large TIF files with this user-friendly
     - [Install from GitHub](#install-from-github)
     - [Install from pip](#install-from-pip)
 - [Usage](#usage)
-    - [Folder Structure](#folder-structure)
-    - [Generate Tiles](#generate-tiles)
-    - [Run the Viewer](#run-the-viewer)
     - [Run as Docker](#run-as-docker)
     - [Deploy in cloud](#cloud-deploy)
 - [Acknowledgements](#acknowledgements)
@@ -57,4 +54,3 @@ See instructions in folder [cloud-deploy](https://github.com/davidvi/TissueMap/t
 ## Acknowledgements
 
 TissueMap uses [OpenSeadragon](https://openseadragon.github.io/) for robust, high-performance image visualization.
-```
