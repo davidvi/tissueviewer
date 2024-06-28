@@ -1,9 +1,12 @@
 import { createStore } from 'vuex';
 import * as slideContent from "./modules/slideContent";
+import * as uploadSlide from "./modules/uploadSlide";
+import * as manageFiles from "./modules/manageFiles";
 
 const store = createStore({
     state() {
         return {
+            // slide variables
             selectedSample: {},
             selectedSampleName: "",
             samples: [],
@@ -20,6 +23,18 @@ const store = createStore({
             viewportZoom: 1,
             viewportBounds: null, 
             saveEnabled: false,
+            userProfile: null,
+            location: "public",
+            activatedStains: {},
+
+            // upload variables
+            file: null,
+            progressChunk: 0,
+            progressTotalChunks: 0, 
+
+            // file management variables
+            userFiles: [],
+            dataUsed: 0,
         }
     },
     mutations: {
@@ -30,7 +45,9 @@ const store = createStore({
         },
     },
     actions: {
-        ...slideContent, 
+        ...slideContent,
+        ...uploadSlide,
+        ...manageFiles,
     }
 })
 
