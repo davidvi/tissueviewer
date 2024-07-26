@@ -9,7 +9,7 @@ from helpers.process_tiff import process_tiff
 from helpers.move_to_completed import move_to_completed
 
 def main():
-    print("Starting ImmunoViewer watch folder")
+    print("Starting TissueViewer watch folder")
     parser = argparse.ArgumentParser(description="Watch folder and process new files as they are added")
     parser.add_argument('import_dir', nargs='?', help='The data directory to watch for new files (default: %(default)s)', default='/iv-import')
     parser.add_argument('storage_dir', nargs='?', help='The output directory for the processed files (default: %(default)s)', default='/iv-store')
