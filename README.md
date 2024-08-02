@@ -25,6 +25,8 @@ To run TissueViewer within a Docker container, follow these steps. This setup al
    Start by building the Docker image from your Dockerfile. This image will include all the necessary dependencies and configurations to run TissueViewer.
 
    ```bash
+   git clone https://github.com/davidvi/tissueviewer.git
+   cd tissueviewer
    docker build -t tv .
    ```
 
