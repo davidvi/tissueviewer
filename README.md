@@ -5,9 +5,6 @@ Explore and annotate your multi-channel, large TIF files with this user-friendly
 ## Table of Contents
 
 - [About TissueViewer](#about-TissueViewer)
-- [Installation](#installation)
-    - [Install from GitHub](#install-from-github)
-    - [Install from pip](#install-from-pip)
 - [Usage](#usage)
     - [Run as Docker](#run-as-docker)
     - [Deploy in cloud](#cloud-deploy)
