@@ -9,6 +9,7 @@ Explore and annotate your multi-channel, large TIF files with this user-friendly
     - [File Structure](#file-structure)
     - [Run as Docker](#run-as-docker)
     - [Access over Network](#access-over-network)
+    - [Adding Files][#adding-files]
     - [Deploy in cloud](#cloud-deploy)
 - [Acknowledgements](#acknowledgements)
 
@@ -91,6 +92,24 @@ To access TissueViewer from an external computer (not the computer running Tissu
    Replace `<host-ip-address>` with the actual IP address of the computer running TissueViewer.
 
 Note: If you're accessing TissueViewer over the internet (not just your local network), ensure you have proper security measures in place, such as a VPN or secure gateway. It's also recommended to use a reverse proxy like Nginx to route traffic, which can provide additional security and management features.
+
+### Adding Files
+
+There are two methods available for adding or uploading files to TissueViewer:
+
+1. Direct Addition to Import Folder:
+   - Locate the `import` folder in your `file-storage` directory.
+   - Copy or move your files directly into this folder.
+   - TissueViewer will automatically detect and process these files.
+
+2. Web Application Upload:
+   - Access the TissueViewer web interface.
+   - Navigate to the upload page.
+   - Use the provided interface to select and upload your files.
+
+Both methods will result in your files being processed by TissueViewer. Choose the method that best suits your workflow and the size of the files you're working with.
+
+Note: Large files may be better suited for the direct addition method, as web uploads can be limited by browser and server configurations.
 
 ### Cloud deploy
 
