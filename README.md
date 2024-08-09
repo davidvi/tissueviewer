@@ -9,7 +9,7 @@ Explore and annotate your multi-channel, large TIF files with this user-friendly
     - [File Structure](#file-structure)
     - [Run as Docker](#run-as-docker)
     - [Access over Network](#access-over-network)
-    - [Adding Files][#adding-files]
+    - [Adding Files](#adding-files)
     - [Deploy in cloud](#cloud-deploy)
 - [Acknowledgements](#acknowledgements)
 
