@@ -1,0 +1,4 @@
+zarr==2.18.2
+opencv-python==4.8.0.76
+numpy==1.25.2
+dask==2024.3.1
