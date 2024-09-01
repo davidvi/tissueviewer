@@ -9,7 +9,7 @@ from pydantic import BaseModel
 import shutil
 import subprocess
 
-from helpers.server_helpers import *
+from OmeZarrConnector.connector.connect import OmeZarrConnector
 
 from fastapi import FastAPI, Request, HTTPException, Path, status, Query, UploadFile, Form, File, Body
 from fastapi.responses import FileResponse, JSONResponse, Response, PlainTextResponse
@@ -69,6 +69,8 @@ if __name__ == "__main__":
 
     if args.slide_dir:
         settings.SLIDE_DIR = args.slide_dir
+    
+    print("settings: ", settings)
         
     main(host=args.host, port=args.port, reload=args.reload)
 
@@ -87,6 +89,45 @@ async def favicon():
 app.mount("/assets", StaticFiles(directory=os.path.join(client_dir, "assets")), name="assets")
 app.mount("/images", StaticFiles(directory=os.path.join(client_dir, "images")), name="images")
 
+def find_zarr_datasets(base_dir) -> list:
+    """
+    Finds all Zarr datasets in base_dir at depth 1
+    :param base_dir: base directory to search in
+    :return: list of dictionaries containing Zarr dataset information
+    """
+    zarr_datasets = []
+
+    # Get immediate subdirectories
+    with os.scandir(base_dir) as entries:
+        for entry in entries:
+            if entry.is_dir() and entry.name.endswith('.zarr'):
+
+                print("entry path: ", entry.path)
+                
+                ome_connection = OmeZarrConnector(entry.path)
+
+                dataset_info = {
+                    'name': entry.name[:-5],  # Remove '.zarr' from the name
+                    'details': {},
+                    'metadata': ome_connection.metadata
+                }
+
+                # Try to load sample.json if it exists
+                sample_json_path = os.path.join(entry.path, 'sample.json')
+                if os.path.exists(sample_json_path):
+                    with open(sample_json_path, 'r') as f:
+                        dataset_info['details'] = json.load(f)
+
+                zarr_datasets.append(dataset_info)
+
+    print("Found Zarr datasets:")
+    for dataset in zarr_datasets:
+        print(f"- {dataset['name']}")
+        if dataset['details']:
+            print(f"  Details: {dataset['details']}")
+
+    return zarr_datasets
+
 @app.get('/samples.json')
 async def samples(location: str = Query('public', description="Location to search for samples")):
     print("getting samples.json")
@@ -97,7 +138,7 @@ async def samples(location: str = Query('public', description="Location to searc
     print("looking in ", os.path.abspath(search_dir))
     
     try:
-        file_json = find_directories_with_files_folders(os.path.abspath(search_dir))
+        file_json = find_zarr_datasets(os.path.abspath(search_dir))
     except:
         file_json = []
 
@@ -109,72 +150,56 @@ async def samples(location: str = Query('public', description="Location to searc
 
     return JSONResponse(content=buf, status_code=200)
 
-@app.get("/{location}/{files}/{chs}/{gains}/{file}.dzi")
-async def get_dzi(location: str, files: str, chs: str, gains: str, file: str):
+@app.get("/{location}/{chs}/{rgb}/{colors}/{gains}/{file}.dzi")
+async def get_dzi(location: str, chs: str, rgb: bool,colors: str, gains: str, file: str):
     """
     Get the DZI file
     """
-    files = files.split(';')
-    path_to_dzi = os.path.join(os.path.abspath(settings.SLIDE_DIR), location, file, f"{files[0].replace('_files', '')}.dzi")
+    path_to_zarr = os.path.join(settings.SLIDE_DIR, location, file + ".zarr")
+    print("path to zarr: ", path_to_zarr)
+    ome_connection = OmeZarrConnector(path_to_zarr)
 
-    print("path to dzi: ", path_to_dzi)
-    
-    try:
-        dzi_content = modify_dzi_format(path_to_dzi)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    dzi_content = ome_connection.generate_dzi(0)
 
     return Response(content=dzi_content, media_type="application/xml", status_code=200)
 
-@app.get("/{location}/{files}/{chs}/{gains}/{file}_files/{level}/{loc}")
+@app.get("/{location}/{chs}/{rgb}/{colors}/{gains}/{file}_files/{level}/{loc_x}_{loc_y}.jpeg")
 async def get_tile(
     location: str,
-    files: str, 
     chs: str, 
-    gains: str, 
-    file: str = Path(..., description="The base name of the file without extension"),
-    level: int = Path(..., description="The image pyramid level"), 
-    loc: str = Path(..., description="Location of the tile with extension")
+    rgb: bool, 
+    colors: str, 
+    gains: str,
+    file: str,
+    level: int,
+    loc_x: int,
+    loc_y: int
 ):
     """
     Get a tile from the slide
     """
 
-    loc = loc.replace('.jpeg', '.tiff')
-    files = files.split(';') 
-    chs = chs.split(';')
+    path_to_zarr = os.path.join(settings.SLIDE_DIR, location, file + ".zarr")
+    ome_connection = OmeZarrConnector(path_to_zarr)
+
+    channels = chs.split(';')
+    channels = [int(x) for x in channels]
+    colors = colors.split(';')
     gains = gains.split(';')
     gains = [int(x) for x in gains]
 
-    if len(files) == 1:
-        loc = loc.replace('.tiff', '.jpg')
-        file_path = slide_dir / location / file / f'{files[0]}' / str(level) / loc
-        merged_image = cv2.imread(str(file_path))
-    else:
-        merge_images = []
-        merge_chs = []
-        merge_gains = []
 
-
-
-        for i, ch in enumerate(chs):
-            if ch != 'empty':
-
-                file_path = slide_dir / location / file / f'{files[i]}' / str(level) / loc
-                buf = cv2.imread(str(file_path))
-
-                buf = cv2.cvtColor(buf, cv2.COLOR_BGR2GRAY)
-                merge_images.append(buf)
-                merge_chs.append(ch)
-                merge_gains.append(gains[i])
-
-
-        if len(merge_images) == 0:
-            merged_image = np.zeros((256, 256), dtype=np.uint8)
-        else:
-            merged_image = mix_channels(merge_images, merge_chs, merge_gains, settings.COLORS)
-
-    img_bytes = cv2.imencode('.jpeg', merged_image)[1].tobytes()
+    tile = ome_connection.get_combined_image( 
+                         image_id = 0, 
+                         dzi_zoom_level = level, 
+                         channels = channels, 
+                         intensities=gains, 
+                         colors=['blue'], 
+                         is_rgb = rgb, 
+                         tile_x = loc_x, 
+                         tile_y = loc_y)
+    
+    img_bytes = cv2.imencode('.jpeg', tile)[1].tobytes()
     img_io = BytesIO(img_bytes)
 
     return Response(content=img_io.getvalue(), media_type='image/jpeg')

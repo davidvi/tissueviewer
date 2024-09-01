@@ -26,6 +26,7 @@ class OmeZarrConnector:
     self.dzi_total_zoom_levels = 0 # Total zoom levels in the dzi file
     self.tile_size = 256 # Tile size square
     self.largest_zoom_level_with_full_tile = 0
+    self.number_of_channels = 0
     self.color_map = {
       'red': [1, 0, 0],
       'green': [0, 1, 0],
@@ -39,7 +40,14 @@ class OmeZarrConnector:
     self.get_metadata()
     self.calculate_largest_zoom_level_with_full_tile()
     self.calculate_dzi_total_zoom_levels()
+    self.find_number_of_channels()
 
+  def find_number_of_channels(self) -> None:
+    """
+    Find the number of channels in the ome zarr file
+    """
+    da_zarr = da.from_zarr(self.zarr_connection[0][0])
+    self.number_of_channels = da_zarr.shape[1]
 
   def calculate_dzi_total_zoom_levels(self) -> None:
     """
@@ -106,10 +114,22 @@ class OmeZarrConnector:
             'physical_size_y_unit': physical_size_y_unit
             })
         
+      # Get channel information
+      channel_info = []
+      for channel in image.findall('.//ome:Channel', namespace):
+          channel_id = channel.get('ID')
+          channel_name = channel.get('Name')
+          channel_info.append({
+              'channel_id': channel_id,
+              'channel_name': channel_name
+              })
+          # print(f"  Channel: {channel_id}, Name: {channel_name}")
+        
       self.metadata.append({
           'image_id': image_id,
           'image_name': image_name,
-          'pixel_info': pixel_info
+          'pixel_info': pixel_info,
+          'channel_info': channel_info
           })
     
     self.full_size_x = int(self.metadata[0]['pixel_info'][0]['size_x']) # assuming first image is the main image
@@ -152,7 +172,7 @@ class OmeZarrConnector:
       tile_x: x coordinate of the tile
       tile_y: y coordinate of the tile
     """
-    root = zarr.open('/Users/vanijzen/Desktop/example-raw.zarr')[image_id]
+    root = self.zarr_connection[image_id]
     
     # Determine the zarr zoom level
     zarr_zoom_level = min(zoom_level, self.largest_zoom_level_with_full_tile)
@@ -203,7 +223,15 @@ class OmeZarrConnector:
 
     return region
   
-  def get_combined_image(self, image_id, dzi_zoom_level, channels, intensities, colors, tile_x, tile_y) -> np.array:
+  def get_combined_image(self, 
+                         image_id = 0, 
+                         dzi_zoom_level = 1, 
+                         channels = [0], 
+                         intensities=[1], 
+                         colors=['blue'], 
+                         is_rgb = False, 
+                         tile_x = 0, 
+                         tile_y = 0) -> np.array:
     """
     Get a combined image from the ome zarr file
 
@@ -218,17 +246,24 @@ class OmeZarrConnector:
     """
 
     # Get the zoom level for the zarr file
-    zoom_level = self.dzi_total_zoom_levels - dzi_zoom_level - 1
+    zoom_level = self.dzi_total_zoom_levels - dzi_zoom_level - 2
 
     merged_image = None #np.zeros((self.tile_size, self.tile_size, 3), dtype=np.uint8)
     
-    for channel, intensity, color in zip(channels, intensities, colors):
-      color_rgb = self.color_map[color]
-      image = self.get_tile_image(image_id, zoom_level, channel, tile_x, tile_y)
-      enhanced_image = cv2.convertScaleAbs(image, alpha=intensity)
-      colored_image = cv2.merge([enhanced_image * color_rgb[i] for i in range(3)])
-      if merged_image is None:
-        merged_image = colored_image
-      merged_image = cv2.add(merged_image, colored_image)
+    if not is_rgb:
+      for channel, intensity, color in zip(channels, intensities, colors):
+        color_rgb = self.color_map[color]
+        image = self.get_tile_image(image_id, zoom_level, channel, tile_x, tile_y)
+        enhanced_image = cv2.convertScaleAbs(image, alpha=intensity)
+        colored_image = cv2.merge([enhanced_image * color_rgb[i] for i in range(3)])
+        if merged_image is None:
+          merged_image = colored_image
+        merged_image = cv2.add(merged_image, colored_image)
+    else:
+      for channel in channels:
+        image = self.get_tile_image(image_id, zoom_level, channel, tile_x, tile_y)
+        if merged_image is None:
+          merged_image = np.zeros((image.shape[0], image.shape[1], 3), dtype=np.uint8)
+        merged_image[:, :, channel] = image
     
     return merged_image
