@@ -7,9 +7,13 @@ import { baseUrl } from "../../lib/apiConnection";
  */
 export const addStain = async ({ state, commit, dispatch }) => {
   console.log("adding color");
-  let bufStain = state.ch;
-  bufStain[state.addStainFile] = "red"; // Default color for new stain
-  commit('SET_STATE_PROPERTY', { property: "ch", value: bufStain });
+  // let bufStain = state.ch;
+  // bufStain[state.addStainFile] = "red"; // Default color for new stain
+
+  let bufActivatedSample = state.activatedSample;
+  bufActivatedSample.filter(ch => ch.channel_number === state.addStainFile)[0].stain = "red";
+
+  commit('SET_STATE_PROPERTY', { property: "activatedSample", value: bufActivatedSample });
   dispatch('reloadSlide');
   commit('SET_STATE_PROPERTY', { property: "addStainFile", value: "" });
 }
@@ -81,10 +85,9 @@ export const deleteOverlay = async ({ state, commit, dispatch }, index) => {
  * @param {string} file - The file name of the stain to remove.
  */
 export const removeStain = async ({ state, commit, dispatch }, file) => {
-  let bufStain = state.ch;
-  bufStain[file] = "empty"; // Mark the stain as empty
-  commit('SET_STATE_PROPERTY', { property: "ch", value: bufStain });
-
+  let bufActivatedSample = state.activatedSample;
+  bufActivatedSample.filter(ch => ch.channel_number === file)[0].stain = "empty";
+  commit('SET_STATE_PROPERTY', { property: "activatedSample", value: bufActivatedSample });
   dispatch('reloadSlide');
 }
 
@@ -93,24 +96,28 @@ export const removeStain = async ({ state, commit, dispatch }, file) => {
  * @param {Object} context - Vuex context object.
  */
 export const reloadSlide = async ({ state, commit }) => {
-  const chString = state.selectedSample.files.map((file) => {
-    return state.ch[file] ? state.ch[file] : "empty";
-  }).join(";");
 
-  const gainString = state.selectedSample.files.map((file) => {
-    let gain = state.gain[file] ? state.gain[file] : 0;
-    if(!state.activatedStains[file]) {
-      gain = 0;
+  const chList = [];
+  const gainList = [];
+  const stainList = []; 
+
+  console.log("activated sample: ", state.activatedSample);
+
+  state.activatedSample.forEach((ch, index) => {
+    if(ch.stain != "empty" && ch.activated) {
+      stainList.push(`${ch.stain}`);
+      gainList.push(`${ch.gain}`);
+      chList.push(`${ch.channel_number}`);
     }
-    return gain.toString();
-    // return state.gain[file] ? state.gain[file] : "0";
-  }).join(";");
+  }); 
 
-  const filesString = state.selectedSample.files.join(";");
+  const chString = chList.join(";");
+  const gainString = gainList.join(";");
+  const stainString = stainList.join(";");
 
   const location = state.location == "public" ? "public" : (state.userProfile && state.userProfile.uid ? state.userProfile.uid : "noid");
 
-  let currentSlide = `${baseUrl}/${location}/${filesString}/${chString}/${gainString}/${state.selectedSample.name}.dzi`;
+  let currentSlide = `${baseUrl}/${location}/${chString}/${state.currentSampleIsRGB}/${stainString}/${gainString}/${state.selectedSample.name}.dzi`;
 
   commit('SET_STATE_PROPERTY', { property: "currentSlide", value: currentSlide });
 
@@ -127,14 +134,30 @@ export const loadSample = async ({ state, commit, dispatch }) => {
 
   console.log("selected sample: ", selectedSampleBuf);
 
-  let activatedStains = {};
-  selectedSampleBuf.files.forEach(file => {
-    activatedStains[file] = true;
+  let activatedSample = [];
+
+  selectedSampleBuf.metadata[0].channel_info.forEach((ch, index) => {
+    const channelInfo = {
+      channel_name: ch.channel_name ? ch.channel_name : index,
+      channel_number: index, 
+      gain: selectedSampleBuf.details.gain && selectedSampleBuf.details.gain[index] ? selectedSampleBuf.details.gain[index] : 1,
+      stain : selectedSampleBuf.details.ch_stain && selectedSampleBuf.details.ch_stain[index] ? selectedSampleBuf.details.ch_stain[index] : "empty",
+      activated: true,
+    }
+    activatedSample.push(channelInfo);
+
+
+
   });
-  commit('SET_STATE_PROPERTY', { property: "activatedStains", value: activatedStains });
-  commit('SET_STATE_PROPERTY', { property: "ch", value: selectedSampleBuf.details.ch ? selectedSampleBuf.details.ch : {} });
-  commit('SET_STATE_PROPERTY', { property: "gain", value: selectedSampleBuf.details.gain ? selectedSampleBuf.details.gain : {} });
-  commit('SET_STATE_PROPERTY', { property: "ch_stain", value: selectedSampleBuf.details.ch_stain ? selectedSampleBuf.details.ch_stain : {} });
+
+  console.log("activatedSample: ", activatedSample);
+
+  commit('SET_STATE_PROPERTY', { property: "activatedSample", value: activatedSample });
+
+  // commit('SET_STATE_PROPERTY', { property: "activatedStains", value: activatedStains });
+  // commit('SET_STATE_PROPERTY', { property: "ch", value: selectedSampleBuf.details.ch ? selectedSampleBuf.details.ch : {} });
+  // commit('SET_STATE_PROPERTY', { property: "gain", value: selectedSampleBuf.details.gain ? selectedSampleBuf.details.gain : {} });
+  // commit('SET_STATE_PROPERTY', { property: "ch_stain", value: selectedSampleBuf.details.ch_stain ? selectedSampleBuf.details.ch_stain : {} });
   commit('SET_STATE_PROPERTY', { property: "description", value: selectedSampleBuf.details.description ? selectedSampleBuf.details.description : "" });
   commit('SET_STATE_PROPERTY', { property: "overlays", value: selectedSampleBuf.details.overlays ? selectedSampleBuf.details.overlays : [] });
 

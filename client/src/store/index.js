@@ -10,9 +10,9 @@ const store = createStore({
             selectedSample: {},
             selectedSampleName: "",
             samples: [],
-            ch: {},
-            ch_stain: {},
-            gain: {},
+            // ch: {},
+            // ch_stain: {},
+            // gain: {},
             description: "",
             slideSettingsShown: false,
             overlays: [],
@@ -25,7 +25,9 @@ const store = createStore({
             saveEnabled: false,
             userProfile: null,
             location: "public",
-            activatedStains: {},
+            // activatedStains: {},
+            activatedSample: [],
+            currentSampleIsRGB: false, 
 
             // upload variables
             file: null,

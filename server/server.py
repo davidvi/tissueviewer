@@ -36,16 +36,8 @@ class Settings(BaseSettings):
     DU_LOC: str = "/usr/bin/du"
     RM_LOC: str = "/usr/bin/rm"
     SAVE: bool = False
-    COLORS: dict = {
-        'green': (0, 255, 0),
-        'red': (0, 0, 255),
-        'blue': (255, 0, 0),
-        'yellow': (0, 255, 255),
-        'cyan': (255, 255, 0),
-        'magenta': (255, 0, 255),
-        'white': (255, 255, 255),
-        'black': (0, 0, 0),
-    }
+    COLORS: list = ["red", "green", "blue", "yellow", "magenta", "cyan", "white"]
+
     class Config:
         env_prefix = "IV_"
 
@@ -145,7 +137,7 @@ async def samples(location: str = Query('public', description="Location to searc
     buf = {
         "samples": file_json,
         "save": settings.SAVE,
-        "colors": list(settings.COLORS.keys())
+        "colors": settings.COLORS
     }
 
     return JSONResponse(content=buf, status_code=200)
@@ -194,12 +186,13 @@ async def get_tile(
                          dzi_zoom_level = level, 
                          channels = channels, 
                          intensities=gains, 
-                         colors=['blue'], 
+                         colors=colors, 
                          is_rgb = rgb, 
                          tile_x = loc_x, 
                          tile_y = loc_y)
     
-    img_bytes = cv2.imencode('.jpeg', tile)[1].tobytes()
+    tile_rgb = cv2.cvtColor(tile, cv2.COLOR_BGR2RGB)
+    img_bytes = cv2.imencode('.jpeg', tile_rgb)[1].tobytes()
     img_io = BytesIO(img_bytes)
 
     return Response(content=img_io.getvalue(), media_type='image/jpeg')

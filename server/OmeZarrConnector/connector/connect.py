@@ -24,7 +24,7 @@ class OmeZarrConnector:
     self.zarr_connection = zarr.open(self.path) # Open the zarr file
     self.total_zoom_levels = len(self.zarr_connection[0]) # Total zoom levels in the main image zarr file
     self.dzi_total_zoom_levels = 0 # Total zoom levels in the dzi file
-    self.tile_size = 256 # Tile size square
+    self.tile_size = 254 # Tile size square
     self.largest_zoom_level_with_full_tile = 0
     self.number_of_channels = 0
     self.color_map = {
@@ -155,8 +155,8 @@ class OmeZarrConnector:
     # Generate dzi
 
     dzi = '<?xml version="1.0" encoding="UTF-8"?>\n'
-    dzi += f'<Image TileSize="256" Overlap="0" Format="png" xmlns="http://schemas.microsoft.com/deepzoom/2008">\n'
-    dzi += f'  <Size Width="{size_x}" Height="{size_y}"/>\n'
+    dzi += f'<Image TileSize="{self.tile_size}" Overlap="0" Format="jpeg" xmlns="http://schemas.microsoft.com/deepzoom/2008">\n'
+    dzi += f'  <Size Height="{size_y}" Width="{size_x}"/>\n'
     dzi += '</Image>\n'
 
     return dzi
@@ -246,19 +246,29 @@ class OmeZarrConnector:
     """
 
     # Get the zoom level for the zarr file
-    zoom_level = self.dzi_total_zoom_levels - dzi_zoom_level - 2
+    zoom_level = self.dzi_total_zoom_levels - dzi_zoom_level
 
     merged_image = None #np.zeros((self.tile_size, self.tile_size, 3), dtype=np.uint8)
     
     if not is_rgb:
       for channel, intensity, color in zip(channels, intensities, colors):
         color_rgb = self.color_map[color]
+
+        print("color rgb: ", color_rgb)
+
         image = self.get_tile_image(image_id, zoom_level, channel, tile_x, tile_y)
         enhanced_image = cv2.convertScaleAbs(image, alpha=intensity)
-        colored_image = cv2.merge([enhanced_image * color_rgb[i] for i in range(3)])
+        colored_image = cv2.merge([enhanced_image * color_rgb[i] for i in range(3)]) 
+        # colored_image = np.zeros((image.shape[0], image.shape[1], 3), dtype=np.float32)
+        # for i in range(3):
+          # colored_image[:,:,i] = enhanced_image * color_rgb[i]
+        # colored_image = cv2.normalize(colored_image, None, 0, 255, cv2.NORM_MINMAX)
+
         if merged_image is None:
           merged_image = colored_image
-        merged_image = cv2.add(merged_image, colored_image)
+        merged_image = cv2.add(merged_image, colored_image) 
+        # merged_image = merged_image.astype(np.uint8)
+
     else:
       for channel in channels:
         image = self.get_tile_image(image_id, zoom_level, channel, tile_x, tile_y)

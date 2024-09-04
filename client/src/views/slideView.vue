@@ -75,25 +75,25 @@
     </div>
     <!-- IF WINDOW NOT MINIMIZED -->
     <!-- <div v-if="!windowMinimal"> -->
-      <div v-if="selectedSample.files.length > 1">
+      <!-- <div v-if="selectedSample.files.length > 1"> -->
         <div class="mb-4">
           <strong class="text-white">Channels</strong>
-          <div v-for="file in selectedSample.files" :key="file">
-            <div class="mb-2 p-2 border rounded text-gray-800 bg-gray-200" v-if="ch[file] != 'empty'">
+          <div v-for="channel in activatedSampleLocal" :key="channel.channel_number">
+            <div class="mb-2 p-2 border rounded text-gray-800 bg-gray-200" v-if="channel.stain != 'empty'">
               <div class="flex items-center space-x-2 mb-2">
-                <input v-model="ch_stain[file]" class="flex-grow p-1 border rounded" placeholder="Stain description">
-                <button class="p-1" @click="removeStain(file)">
+                <input v-model="channel.channel_name" class="flex-grow p-1 border rounded" placeholder="Stain description">
+                <button class="p-1" @click="removeStain(channel.channel_number)">
                   <x-circle-icon class="icon" />
                 </button>
               </div>
               <div class="flex items-center space-x-2">
-                <select v-model="ch[file]" class="flex-grow p-1 border rounded" @change="settingsChanged">
+                <select v-model="channel.stain" class="flex-grow p-1 border rounded" @change="settingsChanged">
                   <option v-for="option in colorOptions" :value="option">{{ option }}</option>
                 </select>
 
-                <input type="checkbox" v-model="activatedStainsLocal[file]" @change="settingsChanged">
+                <input type="checkbox" v-model="channel.activated" @change="settingsChanged">
 
-                <input type="range" v-model="gain[file]" max="20" min="0" step="1" class="flex-grow" @change="settingsChanged">
+                <input type="range" v-model="channel.gain" max="20" min="0" step="1" class="flex-grow" @change="settingsChanged">
               </div>
             </div>
           </div>
@@ -102,14 +102,14 @@
         <div class="mb-4">
           <strong class="text-white">Add channel</strong>
           <select v-model="addStainFileLocal" class="block w-full mt-1 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md" @change="addStain">
-            <option v-for="option in stainOptions" :value="option.file">{{ option.stain }}</option>
+            <option v-for="option in activatedSample" :value="option.channel_number">{{ option.channel_name }}</option>
           </select>
         </div>
 
-      </div>
+      <!-- </div>
       <div v-else class="mb-4">
         <strong class="text-white">Sample has one channel</strong>
-      </div>
+      </div> -->
 
       <div class="mb-4">
         <strong class="text-white">Annotations</strong>
@@ -159,8 +159,16 @@ export default {
     ...mapState(["samples", "selectedSample", "gain", "ch", "ch_stain", "overlays",
       "slideSettingsShown", "selectedSampleName", "currentSlide", "colorOptions", "description",
       "stainOptions", "addStainFile", "viewportCenter", "viewportZoom", "viewportBounds", 
-      "saveEnabled", "activatedStains"]),
+      "saveEnabled", "activatedStains", "activatedSample"]),
 
+      activatedSampleLocal: {
+        get() {
+          return this.activatedSample;
+        },
+        set(value) {
+          this.SET_STATE_PROPERTY({ property: "activatedSample", value: value });
+        },
+      },
       activatedStainsLocal: {
       get() {
         return this.activatedStains;
@@ -210,14 +218,14 @@ export default {
       },
     },
 
-    stainOptions: {
-      get() {
-        let buf = this.selectedSample.files ? this.selectedSample.files.map(file => {
-          return { file: file, stain: this.ch_stain[file] };
-        }) : [];
-        return buf;
-      }
-    },
+    // stainOptions: {
+    //   get() {
+    //     let buf = this.activatedSample ? this.selectedSample.files.map(file => {
+    //       return { file: file, stain: this.ch_stain[file] };
+    //     }) : [];
+    //     return buf;
+    //   }
+    // },
     selectedSampleNameLocal: {
       get() {
         return this.selectedSampleName;
