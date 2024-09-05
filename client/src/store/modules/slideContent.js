@@ -135,7 +135,7 @@ export const loadSample = async ({ state, commit, dispatch }) => {
   console.log("selected sample: ", selectedSampleBuf);
 
   let activatedSample = [];
-  if(selectedSampleBuf.details.channelsSetting.length == 0) {
+  if(!selectedSampleBuf.details.channelsSetting) {
     selectedSampleBuf.metadata[0].channel_info.forEach((ch, index) => {
       const channelInfo = {
         channel_name: ch.channel_name ? ch.channel_name : index,

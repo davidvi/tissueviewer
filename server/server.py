@@ -107,31 +107,28 @@ def find_zarr_datasets(base_dir) -> list:
     # Get immediate subdirectories
     with os.scandir(base_dir) as entries:
         for entry in entries:
-            if entry.is_dir() and entry.name.endswith('.zarr'):
+            try:
+              if entry.is_dir() and entry.name.endswith('.zarr'):
 
-                print("entry path: ", entry.path)
-                
-                ome_connection = OmeZarrConnector(entry.path)
+                  print("entry path: ", entry.path)
+                  
+                  ome_connection = OmeZarrConnector(entry.path)
 
-                dataset_info = {
-                    'name': entry.name[:-5],  # Remove '.zarr' from the name
-                    'details': {},
-                    'metadata': ome_connection.metadata
-                }
+                  dataset_info = {
+                      'name': entry.name[:-5],  # Remove '.zarr' from the name
+                      'details': {},
+                      'metadata': ome_connection.metadata
+                  }
 
-                # Try to load sample.json if it exists
-                sample_json_path = os.path.join(entry.path, 'sample.json')
-                if os.path.exists(sample_json_path):
-                    with open(sample_json_path, 'r') as f:
-                        dataset_info['details'] = json.load(f)
+                  # Try to load sample.json if it exists
+                  sample_json_path = os.path.join(entry.path, 'sample.json')
+                  if os.path.exists(sample_json_path):
+                      with open(sample_json_path, 'r') as f:
+                          dataset_info['details'] = json.load(f)
 
-                zarr_datasets.append(dataset_info)
-
-    print("Found Zarr datasets:")
-    for dataset in zarr_datasets:
-        print(f"- {dataset['name']}")
-        if dataset['details']:
-            print(f"  Details: {dataset['details']}")
+                  zarr_datasets.append(dataset_info)
+            except:
+              pass
 
     return zarr_datasets
 
@@ -144,16 +141,15 @@ async def samples(location: str = Query('public', description="Location to searc
 
     print("looking in ", os.path.abspath(search_dir))
     
-    try:
-        file_json = find_zarr_datasets(os.path.abspath(search_dir))
-    except:
-        file_json = []
+    file_json = find_zarr_datasets(os.path.abspath(search_dir))
 
     buf = {
         "samples": file_json,
         "save": settings.SAVE,
         "colors": settings.COLORS
     }
+
+    print("bu samples: ", buf)
 
     return JSONResponse(content=buf, status_code=200)
 
