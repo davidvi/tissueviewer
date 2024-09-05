@@ -5,7 +5,24 @@ import argparse
 import subprocess
 from pathlib import Path
 
-ALLOWED_EXTENSIONS = ('.tiff', '.svs', '.tif', '.qptiff')
+ALLOWED_EXTENSIONS = (
+'.1sc', '.2', '.3', '.4', '.afm', '.afi', '.aim', '.al3d', '.am', '.amiramesh',
+'.arf', '.avi', '.bmp', '.btf', '.c01', '.ch5', '.cif', '.cr2', '.crw', '.csv',
+'.cxd', '.czi', '.dat', '.dcm', '.dib', '.dicom', '.dm2', '.dm3', '.dm4', '.dti',
+'.dv', '.eps', '.epsi', '.exp', '.fdf', '.fff', '.fits', '.flex', '.fli', '.frm',
+'.gel', '.gif', '.grey', '.hdf', '.hdp', '.hdr', '.hed', '.his', '.htd', '.html',
+'.hx', '.i2i', '.ics', '.ids', '.im3', '.img', '.ims', '.inr', '.ipl', '.ipm',
+'.ipw', '.jp2', '.jpg', '.jpk', '.jpx', '.l2d', '.labels', '.lei', '.lif', '.lim',
+'.lms', '.lsm', '.mdb', '.mea', '.mnc', '.mng', '.mov', '.mrc', '.mrw', '.msr',
+'.mtb', '.mvd2', '.naf', '.nd', '.nd2', '.nef', '.nhdr', '.nii', '.nrrd', '.obf',
+'.oib', '.oif', '.oir', '.ome', '.ome.btf', '.ome.tf2', '.ome.tf8', '.ome.tif',
+'.ome.tiff', '.ome.xml', '.par', '.pbm', '.pco.raw', '.pcoraw', '.pcx', '.pds',
+'.pgm', '.pic', '.pict', '.png', '.ppm', '.pr3', '.ps', '.psd', '.qptiff', '.r3d',
+'.raw', '.rec', '.res', '.scn', '.sdt', '.seq', '.sif', '.sld', '.sm2', '.sm3',
+'.spc', '.spe', '.spi', '.stp', '.stk', '.svs', '.sxm', '.tf2', '.tf8', '.tff',
+'.tfr', '.tga', '.tif', '.tiff', '.tnb', '.top', '.txt', '.v', '.vms', '.vsi',
+'.vws', '.wat', '.wlz', '.xdce', '.xml', '.xqs', '.xv', '.zfp', '.zfr', '.zip', '.zvi'
+)
 
 def main():
     print("Starting TissueViewer watch folder")
