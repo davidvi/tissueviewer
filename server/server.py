@@ -240,7 +240,7 @@ async def save_slide_settings(location: str, file: str, request: Request):
     else:
         return PlainTextResponse("SAVE BLOCKED", status_code=status.HTTP_403_FORBIDDEN)
     
-@app.post("/upload")
+@app.post("/uploadSample")
 async def upload_file(
     file: UploadFile = File(...),  # File to be uploaded
     name: str = Form(...),  # Name of the file

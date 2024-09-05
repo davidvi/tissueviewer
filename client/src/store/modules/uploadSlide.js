@@ -32,7 +32,7 @@ export const uploadSlide = async({state, commit}) => {
     console.log('form data', formData);
 
     try {
-      await axios.post(`${baseUrl}/upload`, formData, {
+      await axios.post(`${baseUrl}/uploadSample`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
