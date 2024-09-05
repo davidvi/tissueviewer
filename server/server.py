@@ -6,6 +6,7 @@ import cv2
 from pydantic_settings import BaseSettings
 from pydantic import BaseModel
 import subprocess
+import glob
 
 from OmeZarrConnector.connector.connect import OmeZarrConnector
 
@@ -32,9 +33,10 @@ class Settings(BaseSettings):
     IMPORT_DIR: str = "/iv-import"
     TMP_DIR: str = "/tmp"
     DU_LOC: str = "/usr/bin/du"
-    RM_LOC: str = "/usr/bin/rm"
+    RM_LOC: str = "/bin/rm"
     SAVE: bool = False
     COLORS: list = ["red", "green", "blue", "yellow", "magenta", "cyan", "white"]
+    ALLOWED_EXTENSIONS: list = ['.svs', '.tiff', '.tif', '.qptiff']
 
     class Config:
         env_prefix = "TV_"
@@ -240,8 +242,8 @@ async def upload_file(
     """
 
     # check if allowed file type
-    if not (name.lower().endswith('.svs') or name.lower().endswith('.tiff') or name.lower().endswith('.tif')):
-        raise HTTPException(status_code=400, detail="Invalid file type. Only .svs, .tiff, and .tif files are allowed.")
+    if not any(name.lower().endswith(ext) for ext in settings.ALLOWED_EXTENSIONS):
+        raise HTTPException(status_code=400, detail=f"Invalid file type. Allowed extensions are: {', '.join(settings.ALLOWED_EXTENSIONS)}")
     
     isLast = (int(chunk_number) + 1) == int(
         total_chunks
@@ -290,11 +292,6 @@ async def sample_stats():
         )
 
     folders = [f for f in os.listdir(files_path) if os.path.isdir(os.path.join(files_path, f))]
-
-    for folder in folders:
-        sample_json_path = os.path.join(files_path, folder, 'sample.json')
-        if not os.path.exists(sample_json_path):
-            folders.remove(folder)
     
     result = subprocess.run([settings.DU_LOC, '-s', files_path], capture_output=True, text=True)
     data_used = int(result.stdout.split()[0])*512
@@ -314,17 +311,27 @@ async def delete_sample(delete_request: DeleteRequest):
     """
     Delete a sample from the import directory.
     """
-    files_path = os.path.join(settings.SLIDE_DIR, delete_request.sample)
+    sample_name = delete_request.sample[:-5] if delete_request.sample.lower().endswith('.zarr') else delete_request.sample
 
-    if not os.path.exists(files_path):
+    files_path_storage = os.path.join(settings.SLIDE_DIR, "public", sample_name + '.zarr')
+    file_path_import_pattern = os.path.join(settings.IMPORT_DIR, "public", sample_name + ".*")
+
+    storage_exists = os.path.exists(files_path_storage)
+    import_files = glob.glob(file_path_import_pattern)
+
+    if not storage_exists and not import_files:
         return JSONResponse(
             {"message": "Sample not found"},
             status_code=status.HTTP_404_NOT_FOUND,
         )
     
-    result = subprocess.run([settings.RM_LOC, '-rf', files_path], capture_output=True, text=True)
+    if storage_exists:
+        subprocess.run([settings.RM_LOC, '-rf', files_path_storage], capture_output=True, text=True)
+    
+    for file_path in import_files:
+        subprocess.run([settings.RM_LOC, '-f', file_path], capture_output=True, text=True)
 
     return JSONResponse(
-        {"message": "Samples deleted"},
+        {"message": "Sample deleted from storage and import directories"},
         status_code=status.HTTP_200_OK,
     )

@@ -16,7 +16,7 @@
     <!-- Right side: Upload function -->
     <div class="w-1/2 pl-4">
       <h2 class="text-xl font-semibold mb-4">Upload new file</h2>
-      <p class="mb-4">Please upload only .tiff, .ome.tiff, or .svs files.</p>
+      <p class="mb-4">Please upload only bioformats compatible files.</p>
       <p><b>Note: After uploading, it may take some time for the image to be processed and appear. Please be patient!</b></p>
       <br />
       <div v-if="!isUploading">
@@ -86,7 +86,7 @@ export default {
         this.fileLocal = file;
         console.log('Selected file:', this.fileLocal);
       } else {
-        alert('Invalid file type. Please upload only .svs, .tiff, or .tif files.');
+        alert('Invalid file type. Please upload only bioformats compatible files.');
         event.target.value = ''; // Clear the file input
       }
     },
