@@ -3,13 +3,12 @@ from io import BytesIO
 import os
 import json
 import cv2
-import numpy as np
 from pydantic_settings import BaseSettings
 from pydantic import BaseModel
-import shutil
 import subprocess
+import glob
 
-from helpers.server_helpers import *
+from OmeZarrConnector.connector.connect import OmeZarrConnector
 
 from fastapi import FastAPI, Request, HTTPException, Path, status, Query, UploadFile, Form, File, Body
 from fastapi.responses import FileResponse, JSONResponse, Response, PlainTextResponse
@@ -34,20 +33,13 @@ class Settings(BaseSettings):
     IMPORT_DIR: str = "/iv-import"
     TMP_DIR: str = "/tmp"
     DU_LOC: str = "/usr/bin/du"
-    RM_LOC: str = "/usr/bin/rm"
+    RM_LOC: str = "/bin/rm"
     SAVE: bool = False
-    COLORS: dict = {
-        'green': (0, 255, 0),
-        'red': (0, 0, 255),
-        'blue': (255, 0, 0),
-        'yellow': (0, 255, 255),
-        'cyan': (255, 255, 0),
-        'magenta': (255, 0, 255),
-        'white': (255, 255, 255),
-        'black': (0, 0, 0),
-    }
+    COLORS: list = ["red", "green", "blue", "yellow", "magenta", "cyan", "white"]
+    ALLOWED_EXTENSIONS: list = ['.svs', '.tiff', '.tif', '.qptiff']
+
     class Config:
-        env_prefix = "IV_"
+        env_prefix = "TV_"
 
 settings = Settings()
 
@@ -69,6 +61,8 @@ if __name__ == "__main__":
 
     if args.slide_dir:
         settings.SLIDE_DIR = args.slide_dir
+    
+    print("settings: ", settings)
         
     main(host=args.host, port=args.port, reload=args.reload)
 
@@ -87,6 +81,45 @@ async def favicon():
 app.mount("/assets", StaticFiles(directory=os.path.join(client_dir, "assets")), name="assets")
 app.mount("/images", StaticFiles(directory=os.path.join(client_dir, "images")), name="images")
 
+def find_zarr_datasets(base_dir) -> list:
+    """
+    Finds all Zarr datasets in base_dir at depth 1
+    :param base_dir: base directory to search in
+    :return: list of dictionaries containing Zarr dataset information
+    """
+    zarr_datasets = []
+
+    # Get immediate subdirectories
+    with os.scandir(base_dir) as entries:
+        for entry in entries:
+            if entry.is_dir() and entry.name.endswith('.zarr'):
+
+                print("entry path: ", entry.path)
+                
+                ome_connection = OmeZarrConnector(entry.path)
+
+                dataset_info = {
+                    'name': entry.name[:-5],  # Remove '.zarr' from the name
+                    'details': {},
+                    'metadata': ome_connection.metadata
+                }
+
+                # Try to load sample.json if it exists
+                sample_json_path = os.path.join(entry.path, 'sample.json')
+                if os.path.exists(sample_json_path):
+                    with open(sample_json_path, 'r') as f:
+                        dataset_info['details'] = json.load(f)
+
+                zarr_datasets.append(dataset_info)
+
+    print("Found Zarr datasets:")
+    for dataset in zarr_datasets:
+        print(f"- {dataset['name']}")
+        if dataset['details']:
+            print(f"  Details: {dataset['details']}")
+
+    return zarr_datasets
+
 @app.get('/samples.json')
 async def samples(location: str = Query('public', description="Location to search for samples")):
     print("getting samples.json")
@@ -97,90 +130,82 @@ async def samples(location: str = Query('public', description="Location to searc
     print("looking in ", os.path.abspath(search_dir))
     
     try:
-        file_json = find_directories_with_files_folders(os.path.abspath(search_dir))
+        file_json = find_zarr_datasets(os.path.abspath(search_dir))
     except:
         file_json = []
 
     buf = {
         "samples": file_json,
         "save": settings.SAVE,
-        "colors": list(settings.COLORS.keys())
+        "colors": settings.COLORS
     }
 
     return JSONResponse(content=buf, status_code=200)
 
-@app.get("/{location}/{files}/{chs}/{gains}/{file}.dzi")
-async def get_dzi(location: str, files: str, chs: str, gains: str, file: str):
+@app.get("/{location}/{chs}/{rgb}/{colors}/{gains}/{file}.dzi")
+async def get_dzi(
+    location: str,
+    chs: str, 
+    rgb: bool,
+    colors: str,
+    gains: str,
+    file: str
+):
     """
     Get the DZI file
     """
-    files = files.split(';')
-    path_to_dzi = os.path.join(os.path.abspath(settings.SLIDE_DIR), location, file, f"{files[0].replace('_files', '')}.dzi")
+    path_to_zarr = os.path.join(settings.SLIDE_DIR, location, file + ".zarr")
+    print("path to zarr: ", path_to_zarr)
+    ome_connection = OmeZarrConnector(path_to_zarr)
 
-    print("path to dzi: ", path_to_dzi)
-    
-    try:
-        dzi_content = modify_dzi_format(path_to_dzi)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    dzi_content = ome_connection.generate_dzi(0)
 
     return Response(content=dzi_content, media_type="application/xml", status_code=200)
 
-@app.get("/{location}/{files}/{chs}/{gains}/{file}_files/{level}/{loc}")
+@app.get("/{location}/{chs}/{rgb}/{colors}/{gains}/{file}_files/{level}/{loc_x}_{loc_y}.jpeg")
 async def get_tile(
     location: str,
-    files: str, 
     chs: str, 
-    gains: str, 
-    file: str = Path(..., description="The base name of the file without extension"),
-    level: int = Path(..., description="The image pyramid level"), 
-    loc: str = Path(..., description="Location of the tile with extension")
+    rgb: bool, 
+    colors: str, 
+    gains: str,
+    file: str,
+    level: int,
+    loc_x: int,
+    loc_y: int
 ):
     """
     Get a tile from the slide
     """
 
-    loc = loc.replace('.jpeg', '.tiff')
-    files = files.split(';') 
-    chs = chs.split(';')
+    path_to_zarr = os.path.join(settings.SLIDE_DIR, location, file + ".zarr")
+    ome_connection = OmeZarrConnector(path_to_zarr)
+
+    channels = chs.split(';')
+    channels = [int(x) for x in channels]
+    colors = colors.split(';')
     gains = gains.split(';')
-    gains = [int(x) for x in gains]
-
-    if len(files) == 1:
-        loc = loc.replace('.tiff', '.jpg')
-        file_path = slide_dir / location / file / f'{files[0]}' / str(level) / loc
-        merged_image = cv2.imread(str(file_path))
-    else:
-        merge_images = []
-        merge_chs = []
-        merge_gains = []
+    gains = [float(x) for x in gains]
 
 
-
-        for i, ch in enumerate(chs):
-            if ch != 'empty':
-
-                file_path = slide_dir / location / file / f'{files[i]}' / str(level) / loc
-                buf = cv2.imread(str(file_path))
-
-                buf = cv2.cvtColor(buf, cv2.COLOR_BGR2GRAY)
-                merge_images.append(buf)
-                merge_chs.append(ch)
-                merge_gains.append(gains[i])
-
-
-        if len(merge_images) == 0:
-            merged_image = np.zeros((256, 256), dtype=np.uint8)
-        else:
-            merged_image = mix_channels(merge_images, merge_chs, merge_gains, settings.COLORS)
-
-    img_bytes = cv2.imencode('.jpeg', merged_image)[1].tobytes()
+    tile = ome_connection.get_combined_image( 
+                         image_id = 0, 
+                         dzi_zoom_level = level, 
+                         channels = channels, 
+                         intensities=gains, 
+                         colors=colors, 
+                         is_rgb = rgb, 
+                         tile_x = loc_x, 
+                         tile_y = loc_y)
+    
+    tile_rgb = cv2.cvtColor(tile, cv2.COLOR_BGR2RGB)
+    img_bytes = cv2.imencode('.jpeg', tile_rgb)[1].tobytes()
     img_io = BytesIO(img_bytes)
 
     return Response(content=img_io.getvalue(), media_type='image/jpeg')
 
-@app.post("/save/{file:path}", response_class=PlainTextResponse)
-async def save_slide_settings(file: str, request: Request):
+@app.post("/save/{location}/{file}", response_class=PlainTextResponse)
+async def save_slide_settings(location: str, file: str, request: Request):
     """
     Save the slide settings
     """
@@ -189,8 +214,9 @@ async def save_slide_settings(file: str, request: Request):
             data = await request.json()
         except json.JSONDecodeError:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid JSON")
-
-        file_path = slide_dir / file / 'sample.json'
+        
+        file_name = file + ".zarr"
+        file_path = slide_dir / location / file_name / 'sample.json'
 
         with open(file_path, 'w') as f:
             json.dump(data, f)
@@ -216,8 +242,8 @@ async def upload_file(
     """
 
     # check if allowed file type
-    if not (name.lower().endswith('.svs') or name.lower().endswith('.tiff') or name.lower().endswith('.tif')):
-        raise HTTPException(status_code=400, detail="Invalid file type. Only .svs, .tiff, and .tif files are allowed.")
+    if not any(name.lower().endswith(ext) for ext in settings.ALLOWED_EXTENSIONS):
+        raise HTTPException(status_code=400, detail=f"Invalid file type. Allowed extensions are: {', '.join(settings.ALLOWED_EXTENSIONS)}")
     
     isLast = (int(chunk_number) + 1) == int(
         total_chunks
@@ -266,11 +292,6 @@ async def sample_stats():
         )
 
     folders = [f for f in os.listdir(files_path) if os.path.isdir(os.path.join(files_path, f))]
-
-    for folder in folders:
-        sample_json_path = os.path.join(files_path, folder, 'sample.json')
-        if not os.path.exists(sample_json_path):
-            folders.remove(folder)
     
     result = subprocess.run([settings.DU_LOC, '-s', files_path], capture_output=True, text=True)
     data_used = int(result.stdout.split()[0])*512
@@ -290,17 +311,27 @@ async def delete_sample(delete_request: DeleteRequest):
     """
     Delete a sample from the import directory.
     """
-    files_path = os.path.join(settings.SLIDE_DIR, delete_request.sample)
+    sample_name = delete_request.sample[:-5] if delete_request.sample.lower().endswith('.zarr') else delete_request.sample
 
-    if not os.path.exists(files_path):
+    files_path_storage = os.path.join(settings.SLIDE_DIR, "public", sample_name + '.zarr')
+    file_path_import_pattern = os.path.join(settings.IMPORT_DIR, "public", sample_name + ".*")
+
+    storage_exists = os.path.exists(files_path_storage)
+    import_files = glob.glob(file_path_import_pattern)
+
+    if not storage_exists and not import_files:
         return JSONResponse(
             {"message": "Sample not found"},
             status_code=status.HTTP_404_NOT_FOUND,
         )
     
-    result = subprocess.run([settings.RM_LOC, '-rf', files_path], capture_output=True, text=True)
+    if storage_exists:
+        subprocess.run([settings.RM_LOC, '-rf', files_path_storage], capture_output=True, text=True)
+    
+    for file_path in import_files:
+        subprocess.run([settings.RM_LOC, '-f', file_path], capture_output=True, text=True)
 
     return JSONResponse(
-        {"message": "Samples deleted"},
+        {"message": "Sample deleted from storage and import directories"},
         status_code=status.HTTP_200_OK,
     )
