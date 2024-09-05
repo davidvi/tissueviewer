@@ -202,8 +202,8 @@ async def get_tile(
 
     return Response(content=img_io.getvalue(), media_type='image/jpeg')
 
-@app.post("/save/{file:path}", response_class=PlainTextResponse)
-async def save_slide_settings(file: str, request: Request):
+@app.post("/save/{location}/{file}", response_class=PlainTextResponse)
+async def save_slide_settings(location: str, file: str, request: Request):
     """
     Save the slide settings
     """
@@ -212,8 +212,9 @@ async def save_slide_settings(file: str, request: Request):
             data = await request.json()
         except json.JSONDecodeError:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid JSON")
-
-        file_path = slide_dir / file / 'sample.json'
+        
+        file_name = file + ".zarr"
+        file_path = slide_dir / location / file_name / 'sample.json'
 
         with open(file_path, 'w') as f:
             json.dump(data, f)

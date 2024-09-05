@@ -44,18 +44,18 @@ export const loadSampleSheet = async ({ commit, state }, sample) => {
  */
 export const saveDetails = async ({ state, commit }) => {
   let data = {
-    ch: state.ch,
-    gain: state.gain,
-    ch_stain: state.ch_stain,
+    channelsSetting: state.activatedSample,
     description: state.description,
     overlays: state.overlays,
   }
+
+  const location = state.location == "public" ? "public" : (state.userProfile && state.userProfile.uid ? state.userProfile.uid : "noid");
 
   let bufSamples = state.samples;
   bufSamples.filter(s => s.name === state.selectedSample.name)[0].details = data;
   commit('SET_STATE_PROPERTY', { property: "samples", value: bufSamples });
 
-  axios.post(`${baseUrl}/save/${state.selectedSample.name}`, data)
+  axios.post(`${baseUrl}/save/${location}/${state.selectedSample.name}`, data)
     .then(response => {
       console.log(response);
     })
@@ -135,29 +135,24 @@ export const loadSample = async ({ state, commit, dispatch }) => {
   console.log("selected sample: ", selectedSampleBuf);
 
   let activatedSample = [];
-
-  selectedSampleBuf.metadata[0].channel_info.forEach((ch, index) => {
-    const channelInfo = {
-      channel_name: ch.channel_name ? ch.channel_name : index,
-      channel_number: index, 
-      gain: selectedSampleBuf.details.gain && selectedSampleBuf.details.gain[index] ? selectedSampleBuf.details.gain[index] : 1,
-      stain : selectedSampleBuf.details.ch_stain && selectedSampleBuf.details.ch_stain[index] ? selectedSampleBuf.details.ch_stain[index] : "empty",
-      activated: true,
-    }
-    activatedSample.push(channelInfo);
-
-
-
-  });
+  if(selectedSampleBuf.details.channelsSetting == null) {
+    selectedSampleBuf.metadata[0].channel_info.forEach((ch, index) => {
+      const channelInfo = {
+        channel_name: ch.channel_name ? ch.channel_name : index,
+        channel_number: index, 
+        gain: selectedSampleBuf.details.gain && selectedSampleBuf.details.gain[index] ? selectedSampleBuf.details.gain[index] : 1,
+        stain : selectedSampleBuf.details.ch_stain && selectedSampleBuf.details.ch_stain[index] ? selectedSampleBuf.details.ch_stain[index] : "empty",
+        activated: true,
+      }
+      activatedSample.push(channelInfo);
+    });
+  } else {
+    activatedSample = selectedSampleBuf.details.channelsSetting;
+  }
 
   console.log("activatedSample: ", activatedSample);
 
   commit('SET_STATE_PROPERTY', { property: "activatedSample", value: activatedSample });
-
-  // commit('SET_STATE_PROPERTY', { property: "activatedStains", value: activatedStains });
-  // commit('SET_STATE_PROPERTY', { property: "ch", value: selectedSampleBuf.details.ch ? selectedSampleBuf.details.ch : {} });
-  // commit('SET_STATE_PROPERTY', { property: "gain", value: selectedSampleBuf.details.gain ? selectedSampleBuf.details.gain : {} });
-  // commit('SET_STATE_PROPERTY', { property: "ch_stain", value: selectedSampleBuf.details.ch_stain ? selectedSampleBuf.details.ch_stain : {} });
   commit('SET_STATE_PROPERTY', { property: "description", value: selectedSampleBuf.details.description ? selectedSampleBuf.details.description : "" });
   commit('SET_STATE_PROPERTY', { property: "overlays", value: selectedSampleBuf.details.overlays ? selectedSampleBuf.details.overlays : [] });
 
