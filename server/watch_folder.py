@@ -24,6 +24,8 @@ ALLOWED_EXTENSIONS = (
 '.vws', '.wat', '.wlz', '.xdce', '.xml', '.xqs', '.xv', '.zfp', '.zfr', '.zip', '.zvi'
 )
 
+file_sizes = {}
+
 def main():
     print("Starting TissueViewer watch folder")
     parser = argparse.ArgumentParser(description="Watch folder and process new files as they are added")
@@ -45,7 +47,15 @@ def main():
     while True: 
         for file in import_dir.rglob('*'):
             if file.is_file() and file.suffix.lower() in ALLOWED_EXTENSIONS:
-                process_file(file, import_dir, storage_dir, bf)
+                # add to file_sizes
+                if file not in file_sizes:
+                    file_sizes[file] = file.stat().st_size
+                    continue
+                # check if file has changed
+                if file_sizes[file] != file.stat().st_size:
+                    file_sizes[file] = file.stat().st_size
+                else:
+                    process_file(file, import_dir, storage_dir, bf)
                 
         time.sleep(30)
 
@@ -59,6 +69,7 @@ def process_file(file, import_dir, storage_dir, bf):
         
         # Attempt conversion
         try:
+            print(f"Converting {file_path} to {output_zarr}")
             subprocess.run([bf, file_path, str(output_zarr)], check=True)
             print(f"Successfully converted {file_path} to {output_zarr}")
         except subprocess.CalledProcessError:
