@@ -3,10 +3,8 @@ from io import BytesIO
 import os
 import json
 import cv2
-import numpy as np
 from pydantic_settings import BaseSettings
 from pydantic import BaseModel
-import shutil
 import subprocess
 
 from OmeZarrConnector.connector.connect import OmeZarrConnector
@@ -39,7 +37,7 @@ class Settings(BaseSettings):
     COLORS: list = ["red", "green", "blue", "yellow", "magenta", "cyan", "white"]
 
     class Config:
-        env_prefix = "IV_"
+        env_prefix = "TV_"
 
 settings = Settings()
 
@@ -143,7 +141,14 @@ async def samples(location: str = Query('public', description="Location to searc
     return JSONResponse(content=buf, status_code=200)
 
 @app.get("/{location}/{chs}/{rgb}/{colors}/{gains}/{file}.dzi")
-async def get_dzi(location: str, chs: str, rgb: bool,colors: str, gains: str, file: str):
+async def get_dzi(
+    location: str,
+    chs: str, 
+    rgb: bool,
+    colors: str,
+    gains: str,
+    file: str
+):
     """
     Get the DZI file
     """
@@ -178,7 +183,7 @@ async def get_tile(
     channels = [int(x) for x in channels]
     colors = colors.split(';')
     gains = gains.split(';')
-    gains = [int(x) for x in gains]
+    gains = [float(x) for x in gains]
 
 
     tile = ome_connection.get_combined_image( 

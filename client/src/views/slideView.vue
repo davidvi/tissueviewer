@@ -7,16 +7,18 @@
 </div>
 
 <!-- VIEW -->
-<div id="view" class="w-screen h-screen"></div>
+<div id="view" class="w-full h-full relative">
+  <div v-if="!hasActiveChannels" id="viewEmpty" class="absolute inset-0 bg-black z-10"></div>
+</div>
 
 <!-- HUD -->
-<div id="hud" class="fixed bottom-5 left-5 max-w-60 max-h-60 overflow-y-auto bg-black bg-opacity-70 p-2 rounded-md text-white" v-if="selectedSample.files && selectedSample.files.length > 1">
+<div id="hud" class="fixed bottom-5 left-5 max-w-60 max-h-60 overflow-y-auto bg-black bg-opacity-70 p-2 rounded-md text-white" v-if="activatedSampleLocal && activatedSampleLocal.length > 1">
   <h3 class="text-lg font-semibold mb-2">Stains</h3>
-  <div v-for="file in selectedSample.files" :key="file" class="mb-2">
-    <div v-if="ch[file] != 'empty'">
+  <div v-for="channel in activatedSampleLocal" :key="channel.channel_name" class="mb-2">
+    <div v-if="channel.stain != 'empty'">
       <div class="flex items-center space-x-2">
-        <div class="w-4 h-4 rounded-full" :style="{ backgroundColor: ch[file] }"></div>
-        <p>{{ ch_stain[file] }}</p>
+        <div class="w-4 h-4 rounded-full" :style="{ backgroundColor: channel.stain }"></div>
+        <p>{{ channel.channel_name }}</p>
       </div>
     </div>
   </div>
@@ -93,7 +95,7 @@
 
                 <input type="checkbox" v-model="channel.activated" @change="settingsChanged">
 
-                <input type="range" v-model="channel.gain" max="20" min="0" step="1" class="flex-grow" @change="settingsChanged">
+                <input type="range" v-model="channel.gain" max="5" min="0" step="0.1" class="flex-grow" @change="settingsChanged">
               </div>
             </div>
           </div>
@@ -160,6 +162,10 @@ export default {
       "slideSettingsShown", "selectedSampleName", "currentSlide", "colorOptions", "description",
       "stainOptions", "addStainFile", "viewportCenter", "viewportZoom", "viewportBounds", 
       "saveEnabled", "activatedStains", "activatedSample"]),
+
+      hasActiveChannels() {
+        return this.activatedSampleLocal.filter(sample => (sample.stain !== "empty" && sample.activated)).length > 0;
+      },
 
       activatedSampleLocal: {
         get() {
