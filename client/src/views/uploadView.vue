@@ -4,7 +4,7 @@
     <div class="w-1/2 pr-4">
       <h2 class="text-xl font-semibold mb-4">Manage files</h2>
       <ul class="p-4 grid grid-cols-3 gap-4">
-          <li v-for="(file, index) in userFilesLocal" :key="index" class="flex items-center border p-2 rounded-md shadow-sm">
+          <li v-for="(file, index) in userFilesLocal" :key="index">
               <div class="w-full flex justify-between items-center">
                   <p>{{ file }}</p>
                   <button @click="deleteFileLocal(file, index)" class="text-red-500 hover:text-red-700 ml-4">x</button>
