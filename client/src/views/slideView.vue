@@ -95,7 +95,14 @@
 
                 <input type="checkbox" v-model="channel.activated" @change="settingsChanged">
 
-                <input type="range" v-model="channel.gain" max="5" min="0" step="0.1" class="flex-grow" @change="settingsChanged">
+                <!-- <input type="range" v-model="channel.gain" max="5" min="0" step="0.01" class="flex-grow" @change="settingsChanged"> -->
+                 
+                <log-slider
+                   :initial-gain="channel.gain"
+                  v-model:gain="channel.gain"
+                  @change="settingsChanged"
+                />
+              
               </div>
             </div>
           </div>
@@ -107,11 +114,6 @@
             <option v-for="option in activatedSample" :value="option.channel_number">{{ option.channel_name }}</option>
           </select>
         </div>
-
-      <!-- </div>
-      <div v-else class="mb-4">
-        <strong class="text-white">Sample has one channel</strong>
-      </div> -->
 
       <div class="mb-4">
         <strong class="text-white">Annotations</strong>
@@ -142,6 +144,8 @@ import { mapGetters, mapActions, mapState, mapMutations } from "vuex";
 import { BeakerIcon, MinusCircleIcon, PlusCircleIcon, ArchiveBoxIcon, 
   XCircleIcon, ShareIcon } from '@heroicons/vue/24/solid'
 
+import LogSlider from "../components/LogSlider.vue";
+
 export default {
   components: {
     BeakerIcon, 
@@ -149,7 +153,8 @@ export default {
     PlusCircleIcon,
     ArchiveBoxIcon,
     XCircleIcon,
-    ShareIcon
+    ShareIcon,
+    LogSlider,
   },
   data() {
     return {

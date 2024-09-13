@@ -255,7 +255,8 @@ class OmeZarrConnector:
         color_rgb = self.color_map[color]
 
         image = self.get_tile_image(image_id, zoom_level, channel, tile_x, tile_y)
-        enhanced_image = cv2.convertScaleAbs(image, alpha=intensity)
+        # enhanced_image = cv2.convertScaleAbs(image, alpha=intensity)
+        enhanced_image = np.clip(image * intensity, 0, 255).astype(np.uint8)
         colored_image = cv2.merge([enhanced_image * color_rgb[i] for i in range(3)]) 
 
         if merged_image is None:
