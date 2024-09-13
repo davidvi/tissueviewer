@@ -9,7 +9,7 @@
       class="flex-grow"
       @input="updateGain"
     />
-    <span>Gain: {{ formattedGain }}</span>
+    <!-- <span>Gain: {{ formattedGain }}</span> -->
   </div>
 </template>
 
