@@ -31,7 +31,7 @@ def main():
     parser = argparse.ArgumentParser(description="Watch folder and process new files as they are added")
     parser.add_argument('import_dir', nargs='?', help='The data directory to watch for new files (default: %(default)s)', default='/tv-import')
     parser.add_argument('storage_dir', nargs='?', help='The output directory for the processed files (default: %(default)s)', default='/tv-store')
-    parser.add_argument('bioformats2raw', nargs='?', help='Path to the Bioformats2raw executable (default: %(default)s)', default='bioformats2raw')
+    parser.add_argument('bioformats2raw', nargs='?', help='Path to the Bioformats2raw executable (default: %(default)s)', default='/bioformats2raw-0.9.4/bin/bioformats2raw')
     args = parser.parse_args()
 
     if not args.import_dir or not args.storage_dir:

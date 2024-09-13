@@ -1,5 +1,5 @@
-# FROM python:3.11-slim-bookworm
-FROM continuumio/miniconda3:24.7.1-0
+FROM python:3.11-slim-bookworm
+# FROM continuumio/miniconda3:24.7.1-0
 
 # Create directories
 RUN mkdir -p /tv-import && \
@@ -8,13 +8,17 @@ RUN mkdir -p /tv-import && \
 # Install vips and other required dependencies
 RUN apt-get update && apt-get install -y \
     python3-opencv npm nodejs \
+    openjdk-17-jdk wget unzip \ 
     && rm -rf /var/lib/apt/lists/*
-
-RUN conda install -c conda-forge python=3.11 -y
 
 # Copy the application
 COPY server /server
 COPY client /client
+
+# install bioformats
+WORKDIR /
+RUN wget https://github.com/glencoesoftware/bioformats2raw/releases/download/v0.9.4/bioformats2raw-0.9.4.zip
+RUN unzip bioformats2raw-0.9.4.zip
 
 # build node
 WORKDIR /client
@@ -26,9 +30,6 @@ WORKDIR /server
 
 # Install the required Python packages
 RUN pip install --no-cache-dir -r requirements.txt
-
-# Install Python dependencies
-RUN conda install -c ome bioformats2raw -y
 
 # Expose port (optional, adjust as needed)
 ENV PORT=8080
@@ -44,7 +45,4 @@ ENV TV_IMPORT_DIR=/tv-import
 ENV TV_TMP_DIR=/tmp
 
 # Run the application using Gunicorn
-# CMD exec gunicorn --workers $WORKERS --threads $THREADS -b :$PORT -k uvicorn.workers.UvicornWorker server:app 
-#& python watch_folder.py
-
-CMD exec python server.py --port 8080 --host 0.0.0.0
+CMD exec gunicorn --workers $WORKERS --threads $THREADS -b :$PORT -k uvicorn.workers.UvicornWorker server:app & python watch_folder.py
