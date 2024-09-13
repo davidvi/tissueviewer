@@ -6,6 +6,7 @@ Explore and annotate your multi-channel, large TIF files with this user-friendly
 
 - [About TissueViewer](#about-TissueViewer)
 - [Usage](#usage)
+    - [Supported Formats](#supported-formats)
     - [File Structure](#file-structure)
     - [Run as Docker](#run-as-docker)
     - [Access over Network](#access-over-network)
@@ -19,6 +20,9 @@ TissueViewer is designed to efficiently handle high-resolution multiplex imaging
 
 ![TissueViewer Screenshot](https://github.com/davidvi/TissueViewer/raw/main/img/screenshot.png)
 
+### Supported Formats
+TissueViewer utilizes [Bioformats2raw](https://github.com/glencoesoftware/bioformats2raw) to convert various file formats to OME-ZARR. This means that TissueViewer supports any format compatible with Bioformats. For a comprehensive list of supported formats, refer to the [Bioformats supported formats page](https://docs.openmicroscopy.org/bio-formats/latest/supported-formats.html).
+
 ### File Structure
 
 ```
@@ -27,18 +31,14 @@ file-storage/
 ├── import/             # Directory for images to be imported
 │   └── ...
 │
-├── storage/            # Directory for storing the raw processed images
-│   └── ...
-│
-└── completed/          # Directory for completed/processed images
+└── storage/            # Directory for storing the raw processed images
     └── ...
 ```
 
 Explanation:
 
-- `import/`: Place your images to be processed here.
+- `import/public/`: Place your images to be processed here.
 - `storage/`: TissueViewer uses this directory to store raw processed images.
-- `completed/`: Fully processed and viewable images are stored here.
 
 ### Run as Docker
 
@@ -59,14 +59,13 @@ To run TissueViewer within a Docker container, follow these steps. This setup al
    Run the Docker container by mapping your local directories to the appropriate directories within the container. This allows the application to access and store data on your local machine.
 
    - `-p 8080:8080` maps the port 8080 of the container to port 8080 on your host, allowing you to access the viewer via `localhost:8080`.
-   - `-v /your/local/import/directory:/iv-import` maps your local directory for importing images to the corresponding directory in the container.
-   - `-v /your/local/storage/directory:/iv-store` maps your local directory for storing processed images to the corresponding directory in the container.
-   - `-v /your/local/completed/directory:/iv-completed` maps your local directory for storing processed images to the corresponding directory in the container.
+   - `-v /your/local/import/directory:/tv-import` maps your local directory for importing images to the corresponding directory in the container.
+   - `-v /your/local/storage/directory:/tv-store` maps your local directory for storing processed images to the corresponding directory in the container.
 
    Run the following command, replacing `/your/local/import/directory` and `/your/local/storage/directory` with the paths to your actual directories:
 
    ```bash
-   docker run -p 8080:8080 -v /your/local/import/directory:/iv-import -v /your/local/storage/directory:/iv-store -v /your/local/completed/directory:/iv-completed tv
+   docker run -p 8080:8080 -v /your/local/import/directory:/tv-import -v /your/local/storage/directory:/tv-store tv
    ```
 
 After executing these steps, TissueViewer will be running inside the Docker container, monitoring the specified import directory for new files to process, and accessible through your web browser at `http://localhost:8080`.
@@ -98,7 +97,7 @@ Note: If you're accessing TissueViewer over the internet (not just your local ne
 There are two methods available for adding or uploading files to TissueViewer:
 
 1. Direct Addition to Import Folder:
-   - Locate the `import` folder in your `file-storage` directory.
+   - Locate the `import/public` folder in your `file-storage` directory.
    - Copy or move your files directly into this folder.
    - TissueViewer will automatically detect and process these files.
 
