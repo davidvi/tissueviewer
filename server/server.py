@@ -76,8 +76,6 @@ if __name__ == "__main__":
 
     if args.slide_dir:
         settings.SLIDE_DIR = args.slide_dir
-    
-    print("settings: ", settings)
         
     main(host=args.host, port=args.port, reload=args.reload)
 

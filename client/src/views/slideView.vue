@@ -59,6 +59,14 @@
       </button>
     </div>
   </div>
+  <div class="px-4">
+    <div class="mb-4">
+      <strong class="text-white">Select collection</strong>
+      <select v-model="locationLocal" class="block w-full mt-1 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md">
+        <option v-for="location in locations" :value="location.key">{{ location.name }}</option>
+      </select>
+    </div>
+  </div>
 
   <!-- IF LOADING -->
   <div v-if="!samples.length" class="p-4">
@@ -160,18 +168,26 @@ export default {
     return {
       viewer: null,
       windowMinimal: false,
+      locations: [{ name: "Examples", key: "public"}],
     }
   },
   computed: {
     ...mapState(["samples", "selectedSample", "gain", "ch", "ch_stain", "overlays",
       "slideSettingsShown", "selectedSampleName", "currentSlide", "colorOptions", "description",
       "stainOptions", "addStainFile", "viewportCenter", "viewportZoom", "viewportBounds", 
-      "saveEnabled", "activatedStains", "activatedSample"]),
+      "saveEnabled", "activatedStains", "activatedSample", "location"]),
 
       hasActiveChannels() {
         return this.activatedSampleLocal.filter(sample => (sample.stain !== "empty" && sample.activated)).length > 0;
       },
-
+      locationLocal: {
+         get() {
+           return this.location;
+         },
+         set(value) {
+           this.SET_STATE_PROPERTY({ property: "location", value: value });
+         },
+       },
       activatedSampleLocal: {
         get() {
           return this.activatedSample;
@@ -229,14 +245,6 @@ export default {
       },
     },
 
-    // stainOptions: {
-    //   get() {
-    //     let buf = this.activatedSample ? this.selectedSample.files.map(file => {
-    //       return { file: file, stain: this.ch_stain[file] };
-    //     }) : [];
-    //     return buf;
-    //   }
-    // },
     selectedSampleNameLocal: {
       get() {
         return this.selectedSampleName;

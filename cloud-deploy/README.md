@@ -12,10 +12,17 @@ This guide describes how to deploy the ImmunoViewer application to Google Cloud 
 
 ### 1. Configure GCP Project
 
-Verify that you are operating in the correct GCP project. Replace `your-gcp-project` with your actual project ID.
+Verify that you are operating in the correct GCP project. Replace `{YOUR-GCP-PROJECT-NAME}` with your actual project ID.
 
 ```bash
-gcloud config set project your-gcp-project
+gcloud config set project {YOUR-GCP-PROJECT-NAME}
+```
+
+And make sure you are working in the main github folder.  
+
+```bash
+git clone https://github.com/davidvi/tissueviewer.git
+cd tissueviewer
 ```
 
 ### 2. Check for Existing Artifact Repository
@@ -31,7 +38,7 @@ gcloud artifacts repositories list --location=us-central1
 If the repository does not exist, create a new one:
 
 ```bash
-gcloud artifacts repositories create iv --repository-format=docker --location=us-central1
+gcloud artifacts repositories create tv --repository-format=docker --location=us-central1
 ```
 
 ### 4. Configure Docker Authentication
@@ -47,8 +54,8 @@ gcloud auth configure-docker us-central1-docker.pkg.dev
 Build your Docker image locally and tag it for upload:
 
 ```bash
-docker build -t iv-cloud .
-docker tag iv-cloud us-central1-docker.pkg.dev/your-gcp-project/iv/iv-cloud:latest
+docker build -t tv-cloud -f cloud-deploy/Dockerfile .
+docker tag tv-cloud us-central1-docker.pkg.dev/{YOUR-GCP-PROJECT-NAME}/tv/tv-cloud:latest
 ```
 
 ### 6. Push Docker Image
@@ -56,7 +63,7 @@ docker tag iv-cloud us-central1-docker.pkg.dev/your-gcp-project/iv/iv-cloud:late
 Push the Docker image to Google Artifact Registry:
 
 ```bash
-docker push us-central1-docker.pkg.dev/your-gcp-project/iv/iv-cloud
+docker push us-central1-docker.pkg.dev/{YOUR-GCP-PROJECT-NAME}/tv/tv-cloud
 ```
 
 ### 7. Deploy to Cloud Run
@@ -64,7 +71,7 @@ docker push us-central1-docker.pkg.dev/your-gcp-project/iv/iv-cloud
 Deploy the image to Google Cloud Run:
 
 ```bash
-gcloud run deploy iv --image us-central1-docker.pkg.dev/your-gcp-project/iv/iv-cloud --platform managed --allow-unauthenticated --execution-environment gen2
+gcloud run deploy iv --image us-central1-docker.pkg.dev/{YOUR-GCP-PROJECT-NAME}/tv/tv-cloud --platform managed --allow-unauthenticated --execution-environment gen2
 ```
 
 ### 8. Attach Storage Bucket

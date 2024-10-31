@@ -1,6 +1,6 @@
 # TissueViewer
 
-Explore and annotate your multi-channel, large TIF files with this user-friendly viewer designed for high-resolution multiplex imaging.
+Explore and annotate your multi-channel imaging files with this user-friendly viewer designed for high-resolution multiplex imaging.
 
 ## Table of Contents
 

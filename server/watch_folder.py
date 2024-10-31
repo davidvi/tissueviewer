@@ -77,8 +77,8 @@ def process_file(file, import_dir, storage_dir, bf):
         
         # Create .zarr folder even if conversion fails
         output_zarr.mkdir(exist_ok=True)
-    else:
-        print(f"Zarr folder already exists for {file_path}")
+    # else:
+    #     print(f"Zarr folder already exists for {file_path}")
 
 if __name__ == "__main__":
     main()
