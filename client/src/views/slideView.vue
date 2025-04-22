@@ -137,6 +137,46 @@
           </div>
         </div>
         <small class="text-white">* right click on slide to add annotation</small>
+        
+        <!-- New Overlay File Upload Section -->
+        <div class="mt-3 p-2 border rounded bg-gray-700">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-white">Import Overlays</span>
+          </div>
+          
+          <div class="flex items-center space-x-2 mb-2">
+            <input
+              type="file"
+              ref="fileInput"
+              accept=".csv"
+              class="hidden"
+              @change="handleFileUpload"
+            />
+            <button 
+              @click="$refs.fileInput.click()"
+              class="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded"
+            >
+              Upload CSV
+            </button>
+            <span v-if="selectedFile" class="text-white text-sm truncate">
+              {{ selectedFile.name }}
+            </span>
+          </div>
+          
+          <!-- Select overlay dropdown -->
+          <div v-if="overlayFiles.length > 0">
+            <select 
+              v-model="selectedOverlayFile" 
+              class="block w-full mt-1 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md"
+              @change="loadSelectedOverlay"
+            >
+              <option value="">Select overlay file</option>
+              <option v-for="overlayFile in overlayFiles" :key="overlayFile.id" :value="overlayFile.id">
+                {{ overlayFile.name }}
+              </option>
+            </select>
+          </div>
+        </div>
       </div>
     <!-- </div> -->
   </div>
@@ -169,6 +209,10 @@ export default {
       viewer: null,
       windowMinimal: false,
       locations: [{ name: "Examples", key: "public"}],
+      selectedFile: null,
+      overlayFiles: [],
+      selectedOverlayFile: "",
+      mouseTrackerInitialized: false,
     }
   },
   computed: {
@@ -416,6 +460,90 @@ export default {
       }).setTracking(true);
     },
 
+    handleFileUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      
+      this.selectedFile = file;
+      
+      // Parse the CSV file
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const csvData = e.target.result;
+          this.processCSV(csvData, file.name);
+        } catch (error) {
+          console.error("Error reading CSV file:", error);
+          alert("There was an error reading the CSV file. Please check the format.");
+        }
+      };
+      
+      reader.readAsText(file);
+    },
+    
+    processCSV(csvContent, fileName) {
+      // Simple CSV parsing
+      const lines = csvContent.split('\n');
+      const headers = lines[0].split(',');
+      
+      // Expected headers: x, y, description (optional)
+      const xIndex = headers.findIndex(h => h.toLowerCase().trim() === 'x');
+      const yIndex = headers.findIndex(h => h.toLowerCase().trim() === 'y');
+      const descIndex = headers.findIndex(h => h.toLowerCase().trim() === 'description');
+      
+      if (xIndex === -1 || yIndex === -1) {
+        alert("CSV file must contain columns for 'x' and 'y' coordinates");
+        return;
+      }
+      
+      const overlayPoints = [];
+      
+      // Skip header row, process data rows
+      for (let i = 1; i < lines.length; i++) {
+        if (!lines[i].trim()) continue; // Skip empty lines
+        
+        const values = lines[i].split(',');
+        const x = parseFloat(values[xIndex]);
+        const y = parseFloat(values[yIndex]);
+        const description = descIndex !== -1 ? values[descIndex] : "";
+        
+        if (!isNaN(x) && !isNaN(y)) {
+          overlayPoints.push({
+            location: {
+              x: x,
+              y: y
+            },
+            description: description || `Point ${i}`,
+            number: i
+          });
+        }
+      }
+      
+      // Add to overlay files list
+      const newOverlayFile = {
+        id: Date.now().toString(),
+        name: fileName,
+        data: overlayPoints
+      };
+      
+      this.overlayFiles.push(newOverlayFile);
+      this.selectedOverlayFile = newOverlayFile.id;
+      this.loadSelectedOverlay();
+    },
+    
+    loadSelectedOverlay() {
+      if (!this.selectedOverlayFile) return;
+      
+      // Find the selected overlay file
+      const overlay = this.overlayFiles.find(o => o.id === this.selectedOverlayFile);
+      if (!overlay) return;
+      
+      // Replace existing overlays with new ones from the CSV
+      this.overlaysLocal = overlay.data;
+      
+      // Reload overlays on the viewer
+      this.reloadOverlays();
+    },
   },
   mounted() {
     console.log("mounted");

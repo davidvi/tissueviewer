@@ -58,7 +58,7 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
-def main(host="127.0.0.1", port=8000, reload=False):
+def main(host="127.0.0.1", port=8000, reload=True):
     """Run the API server with Uvicorn."""
     uvicorn.run("server:app", host=host, port=port, reload=reload)
 
