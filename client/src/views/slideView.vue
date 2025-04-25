@@ -489,14 +489,27 @@ export default {
       // Expected headers: x, y, description (optional)
       const xIndex = headers.findIndex(h => h.toLowerCase().trim() === 'x');
       const yIndex = headers.findIndex(h => h.toLowerCase().trim() === 'y');
-      const descIndex = headers.findIndex(h => h.toLowerCase().trim() === 'description');
+      const labelIndex = headers.findIndex(h => h.toLowerCase().trim() === 'label' || h.toLowerCase().trim() === 'description');
       
       if (xIndex === -1 || yIndex === -1) {
         alert("CSV file must contain columns for 'x' and 'y' coordinates");
         return;
       }
       
-      const overlayPoints = [];
+      // Collect all unique labels and assign colors
+      const uniqueLabels = new Set();
+      for (let i = 1; i < lines.length; i++) {
+        if (!lines[i].trim()) continue; // Skip empty lines
+        const values = lines[i].split(',');
+        if (labelIndex !== -1 && values[labelIndex]) {
+          uniqueLabels.add(values[labelIndex].trim());
+        }
+      }
+      
+      // Generate a color map for each unique label
+      const colorMap = this.generateColorMap(Array.from(uniqueLabels));
+      
+      const pointOverlays = [];
       
       // Skip header row, process data rows
       for (let i = 1; i < lines.length; i++) {
@@ -505,16 +518,16 @@ export default {
         const values = lines[i].split(',');
         const x = parseFloat(values[xIndex]);
         const y = parseFloat(values[yIndex]);
-        const description = descIndex !== -1 ? values[descIndex] : "";
+        const label = labelIndex !== -1 ? values[labelIndex].trim() : `Point ${i}`;
         
         if (!isNaN(x) && !isNaN(y)) {
-          overlayPoints.push({
+          pointOverlays.push({
             location: {
               x: x,
               y: y
             },
-            description: description || `Point ${i}`,
-            number: i
+            description: label,
+            color: colorMap[label] || '#FF0000', // Default to red if no color found
           });
         }
       }
@@ -523,12 +536,13 @@ export default {
       const newOverlayFile = {
         id: Date.now().toString(),
         name: fileName,
-        data: overlayPoints
+        data: pointOverlays,
+        colorMap: colorMap
       };
       
       this.overlayFiles.push(newOverlayFile);
       this.selectedOverlayFile = newOverlayFile.id;
-      this.loadSelectedOverlay();
+      this.displayPointOverlays(pointOverlays);
     },
     
     loadSelectedOverlay() {
@@ -538,11 +552,95 @@ export default {
       const overlay = this.overlayFiles.find(o => o.id === this.selectedOverlayFile);
       if (!overlay) return;
       
-      // Replace existing overlays with new ones from the CSV
-      this.overlaysLocal = overlay.data;
+      // Display the point overlays without modifying the main overlay list
+      this.displayPointOverlays(overlay.data);
+    },
+
+    displayPointOverlays(points) {
+      // Clear any existing point overlays first
+      this.clearPointOverlays();
       
-      // Reload overlays on the viewer
-      this.reloadOverlays();
+      // Add each point as a colored dot overlay
+      for (let i = 0; i < points.length; i++) {
+        const point = points[i];
+        this.addColoredDotOverlay(
+          point.location.x, 
+          point.location.y, 
+          point.description, 
+          point.color
+        );
+      }
+    },
+    
+    clearPointOverlays() {
+      // Clear all overlays that have the point-overlay class
+      const overlays = document.querySelectorAll('.point-overlay');
+      overlays.forEach(overlay => {
+        if (overlay.parentElement) {
+          this.viewer.removeOverlay(overlay);
+        }
+      });
+    },
+    
+    addColoredDotOverlay(x, y, label, color = "#FF0000") {
+      const overlayElement = document.createElement("div");
+      overlayElement.className = "point-overlay";
+      
+      // Create a dot with the assigned color
+      overlayElement.style.cssText = "display: flex; align-items: center;";
+      overlayElement.innerHTML = `
+        <div style="
+          width: 10px; 
+          height: 10px; 
+          border-radius: 50%; 
+          background-color: ${color};
+          border: 1px solid white;
+          box-shadow: 0 0 2px rgba(0,0,0,0.5);
+        "></div>
+        <span style="
+          font-size: 0.8em; 
+          background-color: rgba(0, 0, 0, 0.7); 
+          color: white;
+          padding: 1px 3px; 
+          border-radius: 2px;
+          margin-left: 3px;
+          display: none;
+        ">${label}</span>
+      `;
+
+      this.viewer.addOverlay({
+        element: overlayElement,
+        location: new OpenSeadragon.Point(x, y),
+        placement: OpenSeadragon.Placement.CENTER
+      });
+
+      // Add hover effect to show label text
+      overlayElement.addEventListener("mouseenter", () => {
+        overlayElement.querySelector("span").style.display = "inline";
+      });
+      
+      overlayElement.addEventListener("mouseleave", () => {
+        overlayElement.querySelector("span").style.display = "none";
+      });
+    },
+
+    generateColorMap(labels) {
+      const colorMap = {};
+      
+      // Predefined vivid colors for better visibility
+      const colors = [
+        '#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF', '#00FFFF',
+        '#FF8000', '#8000FF', '#0080FF', '#FF0080', '#80FF00', '#00FF80',
+        '#FF4040', '#40FF40', '#4040FF', '#FFFF40', '#FF40FF', '#40FFFF',
+        '#FF9900', '#9900FF', '#00CCFF', '#FF0099', '#99FF00', '#00FF99',
+        '#990000', '#009900', '#000099', '#999900', '#990099', '#009999'
+      ];
+      
+      labels.forEach((label, index) => {
+        colorMap[label] = colors[index % colors.length];
+      });
+      
+      return colorMap;
     },
   },
   mounted() {

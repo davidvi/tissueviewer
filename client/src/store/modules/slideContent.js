@@ -55,6 +55,8 @@ export const saveDetails = async ({ state, commit }) => {
   bufSamples.filter(s => s.name === state.selectedSample.name)[0].details = data;
   commit('SET_STATE_PROPERTY', { property: "samples", value: bufSamples });
 
+  console.log("saving details: ", data);
+
   axios.post(`${baseUrl}/save/${location}/${state.selectedSample.name}`, data)
     .then(response => {
       console.log(response);

@@ -34,7 +34,7 @@ class Settings(BaseSettings):
     TMP_DIR: str = "/tmp"
     DU_LOC: str = "/usr/bin/du"
     RM_LOC: str = "/bin/rm"
-    SAVE: bool = False
+    SAVE: bool = True
     COLORS: list = ["red", "green", "blue", "yellow", "magenta", "cyan", "white"]
     ALLOWED_EXTENSIONS: list = ['.1sc', '.2', '.3', '.4', '.afm', '.afi', '.aim', '.al3d', '.am', '.amiramesh',
                                 '.arf', '.avi', '.bmp', '.btf', '.c01', '.ch5', '.cif', '.cr2', '.crw', '.csv',
@@ -60,6 +60,9 @@ settings = Settings()
 
 def main(host="127.0.0.1", port=8000, reload=True):
     """Run the API server with Uvicorn."""
+    print(f"Starting server at http://{host}:{port}")
+    print(f"Slide_dir: {settings.SLIDE_DIR}")
+    print(f"Save: {settings.SAVE}")
     uvicorn.run("server:app", host=host, port=port, reload=reload)
 
 if __name__ == "__main__":
