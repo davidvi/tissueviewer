@@ -551,16 +551,54 @@ export default {
       
       const pointOverlays = [];
       
-      // Skip header row, process data rows
+      // First pass to check coordinate scale
+      let needsNormalization = false;
+      
       for (let i = 1; i < lines.length; i++) {
         if (!lines[i].trim()) continue; // Skip empty lines
         
         const values = lines[i].split(',');
         const x = parseFloat(values[xIndex]);
         const y = parseFloat(values[yIndex]);
+        
+        if (!isNaN(x) && !isNaN(y)) {
+          // If we find coordinates > 1, they're likely in actual image coordinates
+          if (x > 1 || y > 1) {
+            needsNormalization = true;
+            break;
+          }
+        }
+      }
+      
+      // Get image dimensions if available and needed
+      let imageWidth = 1, imageHeight = 1;
+      if (needsNormalization) {
+        if (!this.viewer || this.viewer.world.getItemCount() === 0) {
+          alert("Cannot normalize coordinates: No image is currently loaded. Please load an image first.");
+          return;
+        }
+        
+        imageWidth = this.viewer.world.getItemAt(0).source.dimensions.x;
+        imageHeight = this.viewer.world.getItemAt(0).source.dimensions.y; 
+        console.log(`Normalizing coordinates using image dimensions: ${imageWidth}x${imageHeight}`);
+      }
+      
+      // Skip header row, process data rows
+      for (let i = 1; i < lines.length; i++) {
+        if (!lines[i].trim()) continue; // Skip empty lines
+        
+        const values = lines[i].split(',');
+        let x = parseFloat(values[xIndex]);
+        let y = parseFloat(values[yIndex]);
         const label = labelIndex !== -1 ? values[labelIndex].trim() : `Point ${i}`;
         
         if (!isNaN(x) && !isNaN(y)) {
+          // Normalize coordinates if needed
+          if (needsNormalization) {
+            x = x / imageWidth;
+            y = y / imageHeight;
+          }
+          
           pointOverlays.push({
             location: {
               x: x,
