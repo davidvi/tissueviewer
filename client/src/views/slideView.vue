@@ -193,6 +193,21 @@
                 {{ overlayFile.name }}
               </option>
             </select>
+            
+            <!-- Add toggle for overlay visibility -->
+            <div class="flex items-center mt-2">
+              <label class="flex items-center cursor-pointer">
+                <div class="relative">
+                  <input type="checkbox" v-model="showPointOverlays" class="sr-only" @change="togglePointOverlays">
+                  <div class="block bg-gray-600 w-10 h-6 rounded-full"></div>
+                  <div class="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition" 
+                       :class="{'transform translate-x-4': showPointOverlays}"></div>
+                </div>
+                <div class="ml-3 text-white text-sm">
+                  {{ showPointOverlays ? 'Overlays visible' : 'Overlays hidden' }}
+                </div>
+              </label>
+            </div>
           </div>
         </div>
       </div>
@@ -235,6 +250,7 @@ export default {
       currentPointOverlays: [],      // Currently displayed point overlays
       allPointOverlays: [],          // All point overlays from the CSV
       viewportUpdateTimeout: null,   // For debouncing viewport changes
+      showPointOverlays: true,       // Toggle for showing/hiding point overlays
     }
   },
   computed: {
@@ -654,7 +670,7 @@ export default {
       // Clear existing overlays
       this.clearPointOverlays();
       
-      if (!this.allPointOverlays || !this.allPointOverlays.length || !this.viewer) {
+      if (!this.allPointOverlays || !this.allPointOverlays.length || !this.viewer || !this.showPointOverlays) {
         return;
       }
       
@@ -765,6 +781,10 @@ export default {
       });
       
       return colorMap;
+    },
+
+    togglePointOverlays() {
+      this.updateVisiblePoints();
     },
   },
   mounted() {
