@@ -213,6 +213,10 @@ export default {
       overlayFiles: [],
       selectedOverlayFile: "",
       mouseTrackerInitialized: false,
+      maxVisiblePoints: 250,         // Maximum number of points to display at once
+      currentPointOverlays: [],      // Currently displayed point overlays
+      allPointOverlays: [],          // All point overlays from the CSV
+      viewportUpdateTimeout: null,   // For debouncing viewport changes
     }
   },
   computed: {
@@ -361,6 +365,17 @@ export default {
         zoomPerScroll: 2,
         showNavigationControl: true,
         navigationControlAnchor: OpenSeadragon.ControlAnchor.TOP_LEFT,
+      });
+
+      // Add handlers for viewport changes to update point overlays
+      this.viewer.addHandler('animation', () => {
+        // Use debouncing to prevent too frequent updates during continuous operations
+        clearTimeout(this.viewportUpdateTimeout);
+        this.viewportUpdateTimeout = setTimeout(() => {
+          if (this.allPointOverlays && this.allPointOverlays.length) {
+            this.updateVisiblePoints();
+          }
+        }, 200); // 200ms debounce
       });
 
       this.viewer.addHandler('tile-drawn', () => {
@@ -557,21 +572,62 @@ export default {
     },
 
     displayPointOverlays(points) {
+      // Store all point overlays for filtering later
+      this.allPointOverlays = points;
+      
       // Clear any existing point overlays first
       this.clearPointOverlays();
       
-      // Add each point as a colored dot overlay
-      for (let i = 0; i < points.length; i++) {
-        const point = points[i];
-        this.addColoredDotOverlay(
+      // Update based on current viewport
+      this.updateVisiblePoints();
+    },
+    
+    updateVisiblePoints() {
+      // Clear existing overlays
+      this.clearPointOverlays();
+      
+      if (!this.allPointOverlays || !this.allPointOverlays.length || !this.viewer) {
+        return;
+      }
+      
+      // Get current viewport information
+      const viewportBounds = this.viewer.viewport.getBounds();
+      const zoom = this.viewer.viewport.getZoom();
+      
+      // Filter points to only those in the current viewport
+      const pointsInViewport = this.allPointOverlays.filter(point => {
+        return (
+          point.location.x >= viewportBounds.x && 
+          point.location.x <= viewportBounds.x + viewportBounds.width &&
+          point.location.y >= viewportBounds.y && 
+          point.location.y <= viewportBounds.y + viewportBounds.height
+        );
+      });
+      
+      // If there are too many points, sample them
+      let pointsToShow = pointsInViewport;
+      if (pointsInViewport.length > this.maxVisiblePoints) {
+        const step = Math.floor(pointsInViewport.length / this.maxVisiblePoints);
+        pointsToShow = pointsInViewport.filter((_, index) => index % step === 0).slice(0, this.maxVisiblePoints);
+        console.log(`Sampling overlay points: showing ${pointsToShow.length} out of ${pointsInViewport.length} in viewport`);
+      }
+      
+      // Add the visible overlays
+      this.currentPointOverlays = [];
+      for (let i = 0; i < pointsToShow.length; i++) {
+        const point = pointsToShow[i];
+        const element = this.addColoredDotOverlay(
           point.location.x, 
           point.location.y, 
           point.description, 
           point.color
         );
+        this.currentPointOverlays.push(element);
       }
+      
+      console.log(`Displaying ${pointsToShow.length} points out of ${this.allPointOverlays.length} total points`);
     },
-    
+
     clearPointOverlays() {
       // Clear all overlays that have the point-overlay class
       const overlays = document.querySelectorAll('.point-overlay');
