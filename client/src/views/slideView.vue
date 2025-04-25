@@ -154,7 +154,12 @@
         <!-- New Overlay File Upload Section -->
         <div class="mt-3 p-2 border rounded bg-gray-700">
           <div class="flex items-center justify-between mb-2">
-            <span class="text-white">Import Overlays</span>
+            <span class="text-white">Add Overlay</span>
+          </div>
+          
+          <!-- CSV specification information -->
+          <div class="mb-2 text-white text-xs">
+            <p>CSV Format: Header row with columns 'x', 'y', and 'label' (or 'description')</p>
           </div>
           
           <div class="flex items-center space-x-2 mb-2">
@@ -169,7 +174,7 @@
               @click="$refs.fileInput.click()"
               class="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded"
             >
-              Upload CSV
+              Select CSV
             </button>
             <span v-if="selectedFile" class="text-white text-sm truncate">
               {{ selectedFile.name }}
