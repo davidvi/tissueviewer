@@ -29,7 +29,7 @@ app.add_middleware(
 )
 
 class Settings(BaseSettings):
-    SLIDE_DIR: str = "/tv-store"
+    SLIDE_DIR: str = "/tv-store" # /tv-store
     IMPORT_DIR: str = "/tv-import"
     TMP_DIR: str = "/tmp"
     DU_LOC: str = "/usr/bin/du"

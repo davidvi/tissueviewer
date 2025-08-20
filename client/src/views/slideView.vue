@@ -119,9 +119,10 @@
                 <!-- <input type="range" v-model="channel.gain" max="5" min="0" step="0.01" class="flex-grow" @change="settingsChanged"> -->
                  
                 <log-slider
-                   :initial-gain="channel.gain"
+                  :initial-gain="channel.gain"
                   v-model:gain="channel.gain"
                   @change="settingsChanged"
+                  class="flex-grow"
                 />
               
               </div>
