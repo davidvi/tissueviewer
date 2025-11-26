@@ -12,13 +12,26 @@
 </div>
 
 <!-- HUD -->
-<div id="hud" class="fixed bottom-5 left-5 max-w-60 max-h-60 overflow-y-auto bg-black bg-opacity-70 p-2 rounded-md text-white" v-if="activatedSampleLocal && activatedSampleLocal.length > 1">
-  <h3 class="text-lg font-semibold mb-2">Stains</h3>
-  <div v-for="channel in activatedSampleLocal" :key="channel.channel_name" class="mb-2">
-    <div v-if="channel.stain != 'empty'">
+<div id="hud" class="fixed bottom-5 left-5 max-w-60 max-h-60 overflow-y-auto bg-black bg-opacity-70 p-2 rounded-md text-white" v-if="activatedSampleLocal && activatedSampleLocal.length > 1 || activeOverlayLegend">
+  <div v-if="activatedSampleLocal && activatedSampleLocal.length > 1">
+    <h3 class="text-lg font-semibold mb-2">Stains</h3>
+    <div v-for="channel in activatedSampleLocal" :key="channel.channel_name" class="mb-2">
+      <div v-if="channel.stain != 'empty'">
+        <div class="flex items-center space-x-2">
+          <div class="w-4 h-4 rounded-full" :style="{ backgroundColor: channel.stain }"></div>
+          <p>{{ channel.channel_name }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Overlay Legend -->
+  <div v-if="activeOverlayLegend">
+    <h3 class="text-lg font-semibold mb-2 mt-3">Overlay Legend</h3>
+    <div v-for="(color, label) in activeOverlayLegend" :key="label" class="mb-1">
       <div class="flex items-center space-x-2">
-        <div class="w-4 h-4 rounded-full" :style="{ backgroundColor: channel.stain }"></div>
-        <p>{{ channel.channel_name }}</p>
+        <div class="w-4 h-4 rounded-full" :style="{ backgroundColor: color }"></div>
+        <p class="text-sm">{{ label }}</p>
       </div>
     </div>
   </div>
@@ -106,9 +119,10 @@
                 <!-- <input type="range" v-model="channel.gain" max="5" min="0" step="0.01" class="flex-grow" @change="settingsChanged"> -->
                  
                 <log-slider
-                   :initial-gain="channel.gain"
+                  :initial-gain="channel.gain"
                   v-model:gain="channel.gain"
                   @change="settingsChanged"
+                  class="flex-grow"
                 />
               
               </div>
@@ -137,6 +151,66 @@
           </div>
         </div>
         <small class="text-white">* right click on slide to add annotation</small>
+        
+        <!-- New Overlay File Upload Section -->
+        <div class="mt-3 p-2 border rounded bg-gray-700">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-white">Add Overlay</span>
+          </div>
+          
+          <!-- CSV specification information -->
+          <div class="mb-2 text-white text-xs">
+            <p>CSV Format: Header row with columns 'x', 'y', and 'label' (or 'description')</p>
+          </div>
+          
+          <div class="flex items-center space-x-2 mb-2">
+            <input
+              type="file"
+              ref="fileInput"
+              accept=".csv"
+              class="hidden"
+              @change="handleFileUpload"
+            />
+            <button 
+              @click="$refs.fileInput.click()"
+              class="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded"
+            >
+              Select CSV
+            </button>
+            <span v-if="selectedFile" class="text-white text-sm truncate">
+              {{ selectedFile.name }}
+            </span>
+          </div>
+          
+          <!-- Select overlay dropdown -->
+          <div v-if="overlayFiles.length > 0">
+            <select 
+              v-model="selectedOverlayFile" 
+              class="block w-full mt-1 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md"
+              @change="loadSelectedOverlay"
+            >
+              <option value="">Select overlay file</option>
+              <option v-for="overlayFile in overlayFiles" :key="overlayFile.id" :value="overlayFile.id">
+                {{ overlayFile.name }}
+              </option>
+            </select>
+            
+            <!-- Add toggle for overlay visibility -->
+            <div class="flex items-center mt-2">
+              <label class="flex items-center cursor-pointer">
+                <div class="relative">
+                  <input type="checkbox" v-model="showPointOverlays" class="sr-only" @change="togglePointOverlays">
+                  <div class="block bg-gray-600 w-10 h-6 rounded-full"></div>
+                  <div class="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition" 
+                       :class="{'transform translate-x-4': showPointOverlays}"></div>
+                </div>
+                <div class="ml-3 text-white text-sm">
+                  {{ showPointOverlays ? 'Overlays visible' : 'Overlays hidden' }}
+                </div>
+              </label>
+            </div>
+          </div>
+        </div>
       </div>
     <!-- </div> -->
   </div>
@@ -169,6 +243,15 @@ export default {
       viewer: null,
       windowMinimal: false,
       locations: [{ name: "Examples", key: "public"}],
+      selectedFile: null,
+      overlayFiles: [],
+      selectedOverlayFile: "",
+      mouseTrackerInitialized: false,
+      maxVisiblePoints: 250,         // Maximum number of points to display at once
+      currentPointOverlays: [],      // Currently displayed point overlays
+      allPointOverlays: [],          // All point overlays from the CSV
+      viewportUpdateTimeout: null,   // For debouncing viewport changes
+      showPointOverlays: true,       // Toggle for showing/hiding point overlays
     }
   },
   computed: {
@@ -176,6 +259,18 @@ export default {
       "slideSettingsShown", "selectedSampleName", "currentSlide", "colorOptions", "description",
       "stainOptions", "addStainFile", "viewportCenter", "viewportZoom", "viewportBounds", 
       "saveEnabled", "activatedStains", "activatedSample", "location"]),
+
+      activeOverlayLegend() {
+        // If no overlay file is selected, return null
+        if (!this.selectedOverlayFile) return null;
+        
+        // Find the selected overlay file
+        const overlay = this.overlayFiles.find(o => o.id === this.selectedOverlayFile);
+        if (!overlay) return null;
+        
+        // Return the color map from the selected overlay file
+        return overlay.colorMap;
+      },
 
       hasActiveChannels() {
         return this.activatedSampleLocal.filter(sample => (sample.stain !== "empty" && sample.activated)).length > 0;
@@ -319,6 +414,17 @@ export default {
         navigationControlAnchor: OpenSeadragon.ControlAnchor.TOP_LEFT,
       });
 
+      // Add handlers for viewport changes to update point overlays
+      this.viewer.addHandler('animation', () => {
+        // Use debouncing to prevent too frequent updates during continuous operations
+        clearTimeout(this.viewportUpdateTimeout);
+        this.viewportUpdateTimeout = setTimeout(() => {
+          if (this.allPointOverlays && this.allPointOverlays.length) {
+            this.updateVisiblePoints();
+          }
+        }, 200); // 200ms debounce
+      });
+
       this.viewer.addHandler('tile-drawn', () => {
         if (!this.mouseTrackerInitialized) {
           this.mouseTrackerInitialized = true;
@@ -416,6 +522,271 @@ export default {
       }).setTracking(true);
     },
 
+    handleFileUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      
+      this.selectedFile = file;
+      
+      // Parse the CSV file
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const csvData = e.target.result;
+          this.processCSV(csvData, file.name);
+        } catch (error) {
+          console.error("Error reading CSV file:", error);
+          alert("There was an error reading the CSV file. Please check the format.");
+        }
+      };
+      
+      reader.readAsText(file);
+    },
+    
+    processCSV(csvContent, fileName) {
+      // Simple CSV parsing
+      const lines = csvContent.split('\n');
+      const headers = lines[0].split(',');
+      
+      // Expected headers: x, y, description (optional)
+      const xIndex = headers.findIndex(h => h.toLowerCase().trim() === 'x');
+      const yIndex = headers.findIndex(h => h.toLowerCase().trim() === 'y');
+      const labelIndex = headers.findIndex(h => h.toLowerCase().trim() === 'label' || h.toLowerCase().trim() === 'description');
+      
+      if (xIndex === -1 || yIndex === -1) {
+        alert("CSV file must contain columns for 'x' and 'y' coordinates");
+        return;
+      }
+      
+      // Collect all unique labels and assign colors
+      const uniqueLabels = new Set();
+      for (let i = 1; i < lines.length; i++) {
+        if (!lines[i].trim()) continue; // Skip empty lines
+        const values = lines[i].split(',');
+        if (labelIndex !== -1 && values[labelIndex]) {
+          uniqueLabels.add(values[labelIndex].trim());
+        }
+      }
+      
+      // Generate a color map for each unique label
+      const colorMap = this.generateColorMap(Array.from(uniqueLabels));
+      
+      const pointOverlays = [];
+      
+      // First pass to check coordinate scale
+      let needsNormalization = false;
+      
+      for (let i = 1; i < lines.length; i++) {
+        if (!lines[i].trim()) continue; // Skip empty lines
+        
+        const values = lines[i].split(',');
+        const x = parseFloat(values[xIndex]);
+        const y = parseFloat(values[yIndex]);
+        
+        if (!isNaN(x) && !isNaN(y)) {
+          // If we find coordinates > 1, they're likely in actual image coordinates
+          if (x > 1 || y > 1) {
+            needsNormalization = true;
+            break;
+          }
+        }
+      }
+      
+      // Get image dimensions if available and needed
+      let imageWidth = 1, imageHeight = 1;
+      if (needsNormalization) {
+        if (!this.viewer || this.viewer.world.getItemCount() === 0) {
+          alert("Cannot normalize coordinates: No image is currently loaded. Please load an image first.");
+          return;
+        }
+        
+        imageWidth = this.viewer.world.getItemAt(0).source.dimensions.x;
+        imageHeight = this.viewer.world.getItemAt(0).source.dimensions.y; 
+        console.log(`Normalizing coordinates using image dimensions: ${imageWidth}x${imageHeight}`);
+      }
+      
+      // Skip header row, process data rows
+      for (let i = 1; i < lines.length; i++) {
+        if (!lines[i].trim()) continue; // Skip empty lines
+        
+        const values = lines[i].split(',');
+        let x = parseFloat(values[xIndex]);
+        let y = parseFloat(values[yIndex]);
+        const label = labelIndex !== -1 ? values[labelIndex].trim() : `Point ${i}`;
+        
+        if (!isNaN(x) && !isNaN(y)) {
+          // Normalize coordinates if needed
+          if (needsNormalization) {
+            x = x / imageWidth;
+            y = y / imageHeight;
+          }
+          
+          pointOverlays.push({
+            location: {
+              x: x,
+              y: y
+            },
+            description: label,
+            color: colorMap[label] || '#FF0000', // Default to red if no color found
+          });
+        }
+      }
+      
+      // Add to overlay files list
+      const newOverlayFile = {
+        id: Date.now().toString(),
+        name: fileName,
+        data: pointOverlays,
+        colorMap: colorMap
+      };
+      
+      this.overlayFiles.push(newOverlayFile);
+      this.selectedOverlayFile = newOverlayFile.id;
+      this.displayPointOverlays(pointOverlays);
+    },
+    
+    loadSelectedOverlay() {
+      if (!this.selectedOverlayFile) return;
+      
+      // Find the selected overlay file
+      const overlay = this.overlayFiles.find(o => o.id === this.selectedOverlayFile);
+      if (!overlay) return;
+      
+      // Display the point overlays without modifying the main overlay list
+      this.displayPointOverlays(overlay.data);
+    },
+
+    displayPointOverlays(points) {
+      // Store all point overlays for filtering later
+      this.allPointOverlays = points;
+      
+      // Clear any existing point overlays first
+      this.clearPointOverlays();
+      
+      // Update based on current viewport
+      this.updateVisiblePoints();
+    },
+    
+    updateVisiblePoints() {
+      // Clear existing overlays
+      this.clearPointOverlays();
+      
+      if (!this.allPointOverlays || !this.allPointOverlays.length || !this.viewer || !this.showPointOverlays) {
+        return;
+      }
+      
+      // Get current viewport information
+      const viewportBounds = this.viewer.viewport.getBounds();
+      const zoom = this.viewer.viewport.getZoom();
+      
+      // Filter points to only those in the current viewport
+      const pointsInViewport = this.allPointOverlays.filter(point => {
+        return (
+          point.location.x >= viewportBounds.x && 
+          point.location.x <= viewportBounds.x + viewportBounds.width &&
+          point.location.y >= viewportBounds.y && 
+          point.location.y <= viewportBounds.y + viewportBounds.height
+        );
+      });
+      
+      // If there are too many points, sample them
+      let pointsToShow = pointsInViewport;
+      if (pointsInViewport.length > this.maxVisiblePoints) {
+        const step = Math.floor(pointsInViewport.length / this.maxVisiblePoints);
+        pointsToShow = pointsInViewport.filter((_, index) => index % step === 0).slice(0, this.maxVisiblePoints);
+        console.log(`Sampling overlay points: showing ${pointsToShow.length} out of ${pointsInViewport.length} in viewport`);
+      }
+      
+      // Add the visible overlays
+      this.currentPointOverlays = [];
+      for (let i = 0; i < pointsToShow.length; i++) {
+        const point = pointsToShow[i];
+        const element = this.addColoredDotOverlay(
+          point.location.x, 
+          point.location.y, 
+          point.description, 
+          point.color
+        );
+        this.currentPointOverlays.push(element);
+      }
+      
+      console.log(`Displaying ${pointsToShow.length} points out of ${this.allPointOverlays.length} total points`);
+    },
+
+    clearPointOverlays() {
+      // Clear all overlays that have the point-overlay class
+      const overlays = document.querySelectorAll('.point-overlay');
+      overlays.forEach(overlay => {
+        if (overlay.parentElement) {
+          this.viewer.removeOverlay(overlay);
+        }
+      });
+    },
+    
+    addColoredDotOverlay(x, y, label, color = "#FF0000") {
+      const overlayElement = document.createElement("div");
+      overlayElement.className = "point-overlay";
+      
+      // Create a dot with the assigned color
+      overlayElement.style.cssText = "display: flex; align-items: center;";
+      overlayElement.innerHTML = `
+        <div style="
+          width: 10px; 
+          height: 10px; 
+          border-radius: 50%; 
+          background-color: ${color};
+          border: 1px solid white;
+          box-shadow: 0 0 2px rgba(0,0,0,0.5);
+        "></div>
+        <span style="
+          font-size: 0.8em; 
+          background-color: rgba(0, 0, 0, 0.7); 
+          color: white;
+          padding: 1px 3px; 
+          border-radius: 2px;
+          margin-left: 3px;
+          display: none;
+        ">${label}</span>
+      `;
+
+      this.viewer.addOverlay({
+        element: overlayElement,
+        location: new OpenSeadragon.Point(x, y),
+        placement: OpenSeadragon.Placement.CENTER
+      });
+
+      // Add hover effect to show label text
+      overlayElement.addEventListener("mouseenter", () => {
+        overlayElement.querySelector("span").style.display = "inline";
+      });
+      
+      overlayElement.addEventListener("mouseleave", () => {
+        overlayElement.querySelector("span").style.display = "none";
+      });
+    },
+
+    generateColorMap(labels) {
+      const colorMap = {};
+      
+      // Predefined vivid colors for better visibility
+      const colors = [
+        '#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF', '#00FFFF',
+        '#FF8000', '#8000FF', '#0080FF', '#FF0080', '#80FF00', '#00FF80',
+        '#FF4040', '#40FF40', '#4040FF', '#FFFF40', '#FF40FF', '#40FFFF',
+        '#FF9900', '#9900FF', '#00CCFF', '#FF0099', '#99FF00', '#00FF99',
+        '#990000', '#009900', '#000099', '#999900', '#990099', '#009999'
+      ];
+      
+      labels.forEach((label, index) => {
+        colorMap[label] = colors[index % colors.length];
+      });
+      
+      return colorMap;
+    },
+
+    togglePointOverlays() {
+      this.updateVisiblePoints();
+    },
   },
   mounted() {
     console.log("mounted");

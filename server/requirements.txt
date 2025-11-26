@@ -7,7 +7,8 @@ fastapi==0.110.2
 uvicorn==0.29.0
 pydantic-settings==2.2.1
 python-multipart==0.0.9
-zarr==2.18.2
+zarr==2.16.1
+numcodecs==0.11.0
 dask==2024.3.1
 numpy==1.25.2
 opencv-python==4.8.0.76
