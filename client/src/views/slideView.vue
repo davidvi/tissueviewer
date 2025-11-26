@@ -93,8 +93,11 @@
     <div class="mb-4">
       <strong class="text-white">Select slide</strong>
       <select v-model="selectedSampleNameLocal" class="block w-full mt-1 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md">
-        <option v-for="sample in samples" :value="sample.name">{{ sample.name }}</option>
+        <option v-for="sample in samples" :value="sample.name">{{ sample.details.altName ? sample.details.altName : sample.name }}</option>
       </select>
+      <!-- add text field to add alternative name to slide -->
+      <input type="text" v-model="selectedSampleAltNameLocal" class="block w-full mt-1 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md" placeholder="Alternative name">
+      <button class="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded" @click="saveDetails">Rename</button>
     </div>
     <!-- IF WINDOW NOT MINIMIZED -->
     <!-- <div v-if="!windowMinimal"> -->
@@ -258,7 +261,7 @@ export default {
     ...mapState(["samples", "selectedSample", "gain", "ch", "ch_stain", "overlays",
       "slideSettingsShown", "selectedSampleName", "currentSlide", "colorOptions", "description",
       "stainOptions", "addStainFile", "viewportCenter", "viewportZoom", "viewportBounds", 
-      "saveEnabled", "activatedStains", "activatedSample", "location"]),
+      "saveEnabled", "activatedStains", "activatedSample", "location", "selectedSampleAltName"]),
 
       activeOverlayLegend() {
         // If no overlay file is selected, return null
@@ -348,6 +351,14 @@ export default {
         this.SET_STATE_PROPERTY({ property: "selectedSampleName", value: value });
       },
     },
+    selectedSampleAltNameLocal: {
+      get() {
+        return this.selectedSampleAltName;
+      },
+      set(value) {
+        this.SET_STATE_PROPERTY({ property: "selectedSampleAltName", value: value });
+      },
+    },
     slideSettingsShownLocal: {
       get() {
         return this.slideSettingsShown;
@@ -390,7 +401,8 @@ export default {
     ...mapActions(["loadSampleSheet", "loadSample", "reloadSlide", "saveDetails", "addStain", "removeStain", "deleteOverlay"]),
     ...mapMutations(["SET_STATE_PROPERTY"]),
     copyLinkToClipboard() {
-      const link = `https://immunoviewer.org?location=${this.locationLocal}&sample=${this.selectedSampleName}`;
+      const baseUrl = `${window.location.origin}${window.location.pathname}`;
+      const link = `${baseUrl}?location=${this.locationLocal}&sample=${this.selectedSampleName}`;
       navigator.clipboard.writeText(link).then(() => {
         alert('Link copied to clipboard!');
       }).catch(err => {

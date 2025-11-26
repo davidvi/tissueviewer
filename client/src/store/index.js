@@ -9,6 +9,7 @@ const store = createStore({
             // slide variables
             selectedSample: {},
             selectedSampleName: "",
+            selectedSampleAltName: "",
             samples: [],
             description: "",
             slideSettingsShown: false,

@@ -47,12 +47,16 @@ export const saveDetails = async ({ state, commit }) => {
     channelsSetting: state.activatedSample,
     description: state.description,
     overlays: state.overlays,
+    altName: state.selectedSampleAltName,
   }
 
   const location = state.location == "public" ? "public" : (state.userProfile && state.userProfile.uid ? state.userProfile.uid : "noid");
 
   let bufSamples = state.samples;
   bufSamples.filter(s => s.name === state.selectedSample.name)[0].details = data;
+
+  console.log("buf samples: ", bufSamples);
+
   commit('SET_STATE_PROPERTY', { property: "samples", value: bufSamples });
 
   console.log("saving details: ", data);
@@ -136,6 +140,8 @@ export const loadSample = async ({ state, commit, dispatch }) => {
 
   console.log("selected sample: ", selectedSampleBuf);
 
+  console.log("selected sample alt name: ", state.selectedSampleAltName);
+
   let activatedSample = [];
   if(!selectedSampleBuf.details.channelsSetting) {
     selectedSampleBuf.metadata[0].channel_info.forEach((ch, index) => {
@@ -156,7 +162,7 @@ export const loadSample = async ({ state, commit, dispatch }) => {
 
   commit('SET_STATE_PROPERTY', { property: "activatedSample", value: activatedSample });
   commit('SET_STATE_PROPERTY', { property: "description", value: selectedSampleBuf.details.description ? selectedSampleBuf.details.description : "" });
+  commit('SET_STATE_PROPERTY', { property: "selectedSampleAltName", value: selectedSampleBuf.details.altName ? selectedSampleBuf.details.altName : selectedSampleBuf.name });
   commit('SET_STATE_PROPERTY', { property: "overlays", value: selectedSampleBuf.details.overlays ? selectedSampleBuf.details.overlays : [] });
-
   dispatch('reloadSlide');
 }
