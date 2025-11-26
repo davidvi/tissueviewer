@@ -155,6 +155,15 @@
           </select>
         </div>
 
+        <!-- copy settings from another slide -->
+        <div class="mb-4">
+          <strong class="text-white">Copy settings from another slide</strong>
+          <select v-model="copySettingsFromSample" class="block w-full mt-1 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md">
+            <option v-for="sample in filteredSamples" :value="sample.name">{{ sample.details.altName ? sample.details.altName : sample.name }}</option>
+          </select>
+        </div>
+        <button class="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded" @click="copySettingsLocal">Copy settings</button>
+
       <div class="mb-4">
         <strong class="text-white">Annotations</strong>
         <div v-for="overlay in overlaysLocal" :key="overlay.number">
@@ -273,6 +282,7 @@ export default {
       newFolderName: "",
       selectedFolder: "",
       selectedSampleFolderDropdown: "",
+      copySettingsFromSample: "",
     }
   },
   computed: {
@@ -457,7 +467,7 @@ export default {
     },
   },
   methods: {
-    ...mapActions(["loadSampleSheet", "loadSample", "reloadSlide", "saveDetails", "addStain", "removeStain", "deleteOverlay"]),
+    ...mapActions(["loadSampleSheet", "loadSample", "reloadSlide", "saveDetails", "addStain", "removeStain", "deleteOverlay", "copySettings"]),
     ...mapMutations(["SET_STATE_PROPERTY"]),
     copyLinkToClipboard() {
       const baseUrl = `${window.location.origin}${window.location.pathname}`;
@@ -467,6 +477,11 @@ export default {
       }).catch(err => {
         console.error('Failed to copy link: ', err);
       });
+    },
+    copySettingsLocal() {
+      console.log("copying settings from: ", this.copySettingsFromSample);
+      console.log("activated sample: ", this.activatedSampleLocal);
+      this.copySettings(this.copySettingsFromSample);
     },
     addToFolder() {
       this.selectedSampleFolderLocal = this.newFolderName ? this.newFolderName : this.selectedSampleFolderDropdown;

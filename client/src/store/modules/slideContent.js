@@ -133,6 +133,18 @@ export const reloadSlide = async ({ state, commit }) => {
 }
 
 /**
+ * Copies the settings from another slide to the current slide.
+ * @param {Object} context - Vuex context object.
+ */
+export const copySettings = async ({ state, commit, dispatch }, sample) => {
+  console.log("copying settings from: ", sample);
+  let selectedSampleBuf = state.samples.filter(s => s.name === sample)[0];
+  console.log("selected sample buf: ", selectedSampleBuf);
+  console.log("activated sample: ", state.activatedSample);
+  commit('SET_STATE_PROPERTY', { property: "activatedSample", value: selectedSampleBuf.details.channelsSetting });
+}
+
+/**
  * Loads the selected sample from the state and updates the relevant details.
  * @param {Object} context - Vuex context object.
  */
