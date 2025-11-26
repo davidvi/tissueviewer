@@ -10,6 +10,7 @@ const store = createStore({
             selectedSample: {},
             selectedSampleName: "",
             selectedSampleAltName: "",
+            selectedSampleFolder: "",
             samples: [],
             description: "",
             slideSettingsShown: false,

@@ -81,8 +81,17 @@
     </div>
   </div>
 
+  <div class="px-4">
+    <div class="mb-4">
+      <strong class="text-white">Select folder</strong>
+      <select v-model="selectedFolder" class="block w-full mt-1 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md">
+        <option v-for="folder in foldersWithAny" :value="folder.key">{{ folder.name }}</option>
+      </select>
+    </div>
+  </div>
+
   <!-- IF LOADING -->
-  <div v-if="!samples.length" class="p-4">
+  <div v-if="!filteredSamples.length" class="p-4">
     <div class="flex justify-center">
       <strong class="text-white">Uh oh, no slides found</strong>
     </div>
@@ -93,11 +102,17 @@
     <div class="mb-4">
       <strong class="text-white">Select slide</strong>
       <select v-model="selectedSampleNameLocal" class="block w-full mt-1 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md">
-        <option v-for="sample in samples" :value="sample.name">{{ sample.details.altName ? sample.details.altName : sample.name }}</option>
+        <option v-for="sample in filteredSamples" :value="sample.name">{{ sample.details.altName ? sample.details.altName : sample.name }}</option>
       </select>
       <!-- add text field to add alternative name to slide -->
       <input type="text" v-model="selectedSampleAltNameLocal" class="block w-full mt-1 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md" placeholder="Alternative name">
       <button class="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded" @click="saveDetails">Rename</button>
+      <!-- add move to folder options, add a dropdown to select the folder or create a new folder with textbox-->
+      <select v-model="selectedSampleFolderDropdown" class="block w-full mt-1 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md">
+        <option v-for="folder in folders" :value="folder.key">{{ folder.name }}</option>
+      </select>
+      <input type="text" v-model="newFolderName" class="block w-full mt-1 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md" placeholder="or create a new folder">
+      <button class="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded" @click="addToFolder">Add to folder</button>
     </div>
     <!-- IF WINDOW NOT MINIMIZED -->
     <!-- <div v-if="!windowMinimal"> -->
@@ -245,7 +260,7 @@ export default {
     return {
       viewer: null,
       windowMinimal: false,
-      locations: [{ name: "Examples", key: "public"}],
+      locations: [{ name: "Public", key: "public"}],
       selectedFile: null,
       overlayFiles: [],
       selectedOverlayFile: "",
@@ -255,14 +270,50 @@ export default {
       allPointOverlays: [],          // All point overlays from the CSV
       viewportUpdateTimeout: null,   // For debouncing viewport changes
       showPointOverlays: true,       // Toggle for showing/hiding point overlays
+      newFolderName: "",
+      selectedFolder: "",
+      selectedSampleFolderDropdown: "",
     }
   },
   computed: {
     ...mapState(["samples", "selectedSample", "gain", "ch", "ch_stain", "overlays",
       "slideSettingsShown", "selectedSampleName", "currentSlide", "colorOptions", "description",
       "stainOptions", "addStainFile", "viewportCenter", "viewportZoom", "viewportBounds", 
-      "saveEnabled", "activatedStains", "activatedSample", "location", "selectedSampleAltName"]),
+      "saveEnabled", "activatedStains", "activatedSample", "location", "selectedSampleAltName", 
+      "selectedSampleFolder"]),
+      folders() {
+        // Collect unique folders from all samples
+        const folderSet = new Set();
+        this.samples.forEach(sample => {
+          if (
+            sample.details && 
+            sample.details.folder && 
+            typeof sample.details.folder === 'string'
+          ) {
+            folderSet.add(sample.details.folder);
+          }
+        });
+        // Convert set to array of { name, key }
+        const foldersList = Array.from(folderSet).map(folder => ({
+          name: folder,
+          key: folder
+        }));
 
+        // Always put "Any" at the top
+        return [...foldersList];
+      },
+      foldersWithAny() {
+        return [{ name: '-', key: '' }, ...this.folders];
+      },
+      filteredSamples() {
+        // If "Any" ('') is selected, return all samples; otherwise, filter by folder
+        if (!this.selectedFolder) {
+          return this.samples;
+        }
+        return this.samples.filter(
+          sample => sample.details && sample.details.folder === this.selectedFolder
+        );
+      },
       activeOverlayLegend() {
         // If no overlay file is selected, return null
         if (!this.selectedOverlayFile) return null;
@@ -286,6 +337,14 @@ export default {
            this.SET_STATE_PROPERTY({ property: "location", value: value });
          },
        },
+      selectedSampleFolderLocal: {
+        get() {
+          return this.selectedSampleFolder;
+        },
+        set(value) {
+          this.SET_STATE_PROPERTY({ property: "selectedSampleFolder", value: value });
+        },
+      },
       activatedSampleLocal: {
         get() {
           return this.activatedSample;
@@ -408,6 +467,11 @@ export default {
       }).catch(err => {
         console.error('Failed to copy link: ', err);
       });
+    },
+    addToFolder() {
+      this.selectedSampleFolderLocal = this.newFolderName ? this.newFolderName : this.selectedSampleFolderDropdown;
+      console.log("selected folder: ", this.selectedSampleFolderLocal);
+      this.saveDetails();
     },
     loadOpenSeaDragon() {
       this.viewer = new OpenSeadragon({

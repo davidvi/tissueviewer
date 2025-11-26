@@ -35,6 +35,7 @@ export const loadSampleSheet = async ({ commit, state }, sample) => {
       commit('SET_STATE_PROPERTY', { property: "saveEnabled", value: response.data.save });
       commit('SET_STATE_PROPERTY', { property: "colorOptions", value: response.data.colors });
       commit('SET_STATE_PROPERTY', { property: "selectedSampleName", value: sample ? sample : response.data.samples[0].name });
+      commit('SET_STATE_PROPERTY', { property: "selectedSampleFolder", value: response.data.samples[0].details.folder ? response.data.samples[0].details.folder : "" });
     })
 }
 
@@ -48,6 +49,7 @@ export const saveDetails = async ({ state, commit }) => {
     description: state.description,
     overlays: state.overlays,
     altName: state.selectedSampleAltName,
+    folder: state.selectedSampleFolder,
   }
 
   const location = state.location == "public" ? "public" : (state.userProfile && state.userProfile.uid ? state.userProfile.uid : "noid");
