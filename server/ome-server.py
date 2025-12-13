@@ -168,9 +168,10 @@ class OmeTiffPyramid:
             for patch, color_name, gain in zip(patches, colors, gains):
                 patch_norm = self._normalize(patch)
                 b, g, r = get_color(color_name)
-                rgb[:, :, 0] += patch_norm * (b / 255.0) * gain
+                # Swap R and B because COLOR_MAP is actually RGB despite comment
+                rgb[:, :, 0] += patch_norm * (r / 255.0) * gain  # R value -> B channel
                 rgb[:, :, 1] += patch_norm * (g / 255.0) * gain
-                rgb[:, :, 2] += patch_norm * (r / 255.0) * gain
+                rgb[:, :, 2] += patch_norm * (b / 255.0) * gain  # B value -> R channel
 
         rgb = np.clip(rgb * 255.0, 0, 255).astype(np.uint8)
         return rgb
@@ -340,7 +341,7 @@ async def samples(location: str = Query("public", description="Location to searc
 async def get_dzi(
     location: str,
     chs: str,
-    rgb: bool,
+    rgb: str,  # Change to str
     colors: str,
     gains: str,
     file: str,
