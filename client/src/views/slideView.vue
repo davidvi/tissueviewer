@@ -189,6 +189,32 @@
           <div class="mb-2 text-white text-xs">
             <p>CSV Format: Header row with columns 'x', 'y', and 'label' (or 'description')</p>
           </div>
+
+          <!-- Overlay scaling controls -->
+          <div class="flex space-x-2 mb-2">
+            <div class="flex-1">
+              <label class="text-white text-xs block">X factor</label>
+              <input
+                type="number"
+                step="0.01"
+                v-model.number="overlayScaleX"
+                @change="applyOverlayScale"
+                class="block w-full mt-1 pl-2 pr-2 py-1 text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md"
+                placeholder="1"
+              />
+            </div>
+            <div class="flex-1">
+              <label class="text-white text-xs block">Y factor</label>
+              <input
+                type="number"
+                step="0.01"
+                v-model.number="overlayScaleY"
+                @change="applyOverlayScale"
+                class="block w-full mt-1 pl-2 pr-2 py-1 text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md"
+                placeholder="1"
+              />
+            </div>
+          </div>
           
           <div class="flex items-center space-x-2 mb-2">
             <input
@@ -283,6 +309,8 @@ export default {
       selectedFolder: "",
       selectedSampleFolderDropdown: "",
       copySettingsFromSample: "",
+      overlayScaleX: 1,
+      overlayScaleY: 1,
     }
   },
   computed: {
@@ -747,9 +775,26 @@ export default {
       this.displayPointOverlays(overlay.data);
     },
 
+    applyOverlayScale() {
+      const overlay = this.overlayFiles.find(o => o.id === this.selectedOverlayFile);
+      if (!overlay) {
+        return;
+      }
+      this.displayPointOverlays(overlay.data);
+    },
+
     displayPointOverlays(points) {
-      // Store all point overlays for filtering later
-      this.allPointOverlays = points;
+      // Store all point overlays for filtering later with scaling applied
+      const scaleX = Number.isFinite(this.overlayScaleX) ? this.overlayScaleX : 1;
+      const scaleY = Number.isFinite(this.overlayScaleY) ? this.overlayScaleY : 1;
+
+      this.allPointOverlays = points.map(point => ({
+        ...point,
+        location: {
+          x: point.location.x * scaleX,
+          y: point.location.y * scaleY,
+        },
+      }));
       
       // Clear any existing point overlays first
       this.clearPointOverlays();

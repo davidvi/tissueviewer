@@ -163,3 +163,4 @@ data/
 .DS_Store
 
 _version.py
+feature-overlay/
