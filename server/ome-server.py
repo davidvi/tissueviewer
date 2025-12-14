@@ -98,7 +98,34 @@ class OmeTiffPyramid:
         if isinstance(root, zarr.Array):
             self.levels = [root]
         else:
-            arrays = [v for _, v in root.items() if isinstance(v, zarr.Array)]
+            # Handle both Zarr 2.x and 3.x Group objects
+            arrays = []
+            try:
+                # Zarr 3.x: .members() returns (name, item) tuples
+                if hasattr(root, 'members'):
+                    for item in root.members():
+                        # members() returns tuples of (name, array)
+                        if isinstance(item, tuple):
+                            _, array = item
+                            if isinstance(array, zarr.Array):
+                                arrays.append(array)
+                        # In case it returns just the item directly
+                        elif isinstance(item, zarr.Array):
+                            arrays.append(item)
+                # Zarr 2.x: use .items()
+                elif hasattr(root, 'items'):
+                    for _, v in root.items():
+                        if isinstance(v, zarr.Array):
+                            arrays.append(v)
+                else:
+                    # Fallback: try direct iteration over keys
+                    for key in list(root.keys()) if hasattr(root, 'keys') else root:
+                        item = root[key]
+                        if isinstance(item, zarr.Array):
+                            arrays.append(item)
+            except Exception as e:
+                raise ValueError(f"Failed to extract arrays from Zarr group in {os.path.basename(path)}: {e}")
+            
             # Sort by resolution (largest first based on width dimension)
             arrays.sort(key=lambda a: a.shape[-1], reverse=True)
             self.levels = arrays
@@ -323,8 +350,9 @@ def find_ome_tiffs(base_dir: str) -> list:
                         with open(sample_json_path, "r") as f:
                             dataset_info["details"] = json.load(f)
                     ome_files.append(dataset_info)
-                except Exception:
+                except Exception as e:
                     # Skip problematic files but continue listing others
+                    print(f"Error loading {entry.path}: {e}")
                     continue
 
     return ome_files
