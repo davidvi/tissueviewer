@@ -22,10 +22,12 @@ import xml.etree.ElementTree as ET
 
 
 class Settings:
-    SLIDE_DIR: str = "/Users/vanijzen/Developer/tissuemap/feature-overlay/example-data"
+    SLIDE_DIR: str = os.getenv("TV_SLIDE_DIR", "/tv-store")
     TMP_DIR: str = "/tmp"
-    SAVE: bool = True
+    SAVE: bool = os.getenv("TV_SAVE", "True").lower() in ("true", "1", "yes")
     COLORS: list = ["red", "green", "blue", "yellow", "magenta", "cyan", "white"]
+    HOST: str = os.getenv("TV_HOST", "0.0.0.0")
+    PORT: int = int(os.getenv("TV_PORT", "8000"))
 
 
 settings = Settings()
@@ -331,6 +333,7 @@ def find_ome_tiffs(base_dir: str) -> list:
 @app.get("/samples.json")
 async def samples(location: str = Query("public", description="Location to search for samples")):
     search_dir = os.path.join(settings.SLIDE_DIR, location)
+    print(f"Searching for samples in {search_dir}")
     file_json = find_ome_tiffs(os.path.abspath(search_dir))
 
     buf = {"samples": file_json, "save": settings.SAVE, "colors": settings.COLORS}
@@ -418,19 +421,5 @@ def main(host: str = "127.0.0.1", port: int = 8000, reload: bool = True):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Run OME-TIFF server.")
-    parser.add_argument("--host", type=str, default="127.0.0.1", help="Host for the API server")
-    parser.add_argument("--port", type=int, default=8000, help="Port for the API server")
-    parser.add_argument("--reload", action="store_true", help="Enable automatic reload")
-    parser.add_argument("--save", action="store_true", help="Enable saving of slide settings")
-    parser.add_argument("--slide-dir", type=str, help="Directory to store slide files")
-    args = parser.parse_args()
-
-    if args.save:
-        settings.SAVE = True
-
-    if args.slide_dir:
-        settings.SLIDE_DIR = args.slide_dir
-
-    main(host=args.host, port=args.port, reload=args.reload)
+    main(host=settings.HOST, port=settings.PORT, reload=True)
 

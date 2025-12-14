@@ -12,3 +12,4 @@ numcodecs==0.11.0
 dask==2024.3.1
 numpy==1.25.2
 opencv-python==4.8.0.76
+tifffile==2025.12.12
