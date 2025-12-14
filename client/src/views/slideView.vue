@@ -39,8 +39,8 @@
 <!-- END HUD -->
 
 <!-- MINIMIZED -->
-<div id="minimized-menu" class="rounded text-gray-800 bg-gray-600" v-if="windowMinimal">
-  <div class="flex p-4">
+<div id="minimized-menu" class="rounded text-gray-800" v-if="windowMinimal">
+  <div class="flex justify-end p-4">
     <button class="p-2" @click="windowMinimal = !windowMinimal">
       <plus-circle-icon class="icon" />
     </button>
@@ -964,7 +964,7 @@ div#view {
 #minimized-menu {
   z-index: 1000;
   position: fixed;
-  top: 10vh;
+  top: 1vh;
   right: 1vw;
   width: 5vw;
   max-height: 10vh;
@@ -974,10 +974,10 @@ div#view {
 #navigation-menu {
   z-index: 1000;
   position: fixed;
-  top: 10vh;
+  top: 1vh;
   right: 1vw;
   width: 25vw;
-  max-height: 90vh;
+  max-height: 98vh;
   overflow-y: auto;
 }
 </style>
