@@ -146,6 +146,7 @@
               </div>
             </div>
           </div>
+          <button class="mt-2 p-2 bg-blue-600 hover:bg-blue-700 text-white rounded" @click="saveChannels">Save channels</button>
         </div>
 
         <div class="mb-4">
@@ -495,7 +496,7 @@ export default {
     },
   },
   methods: {
-    ...mapActions(["loadSampleSheet", "loadSample", "reloadSlide", "saveDetails", "addStain", "removeStain", "deleteOverlay", "copySettings"]),
+    ...mapActions(["loadSampleSheet", "loadSample", "reloadSlide", "saveDetails", "saveChannels", "addStain", "removeStain", "deleteOverlay", "copySettings"]),
     ...mapMutations(["SET_STATE_PROPERTY"]),
     copyLinkToClipboard() {
       const baseUrl = `${window.location.origin}${window.location.pathname}`;

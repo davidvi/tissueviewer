@@ -70,6 +70,39 @@ export const saveDetails = async ({ state, commit }) => {
 }
 
 /**
+ * Saves only the channel settings without affecting folder or other details.
+ * @param {Object} context - Vuex context object.
+ */
+export const saveChannels = async ({ state, commit }) => {
+  // Get the current sample's existing details to preserve folder and other settings
+  let selectedSampleBuf = state.samples.filter(s => s.name === state.selectedSample.name)[0];
+  
+  let data = {
+    channelsSetting: state.activatedSample,
+    description: selectedSampleBuf.details.description || state.description,
+    overlays: selectedSampleBuf.details.overlays || state.overlays,
+    altName: selectedSampleBuf.details.altName || state.selectedSampleAltName,
+    folder: selectedSampleBuf.details.folder || "", // Preserve existing folder
+  }
+
+  const location = state.location == "public" ? "public" : (state.userProfile && state.userProfile.uid ? state.userProfile.uid : "noid");
+
+  let bufSamples = state.samples;
+  bufSamples.filter(s => s.name === state.selectedSample.name)[0].details = data;
+
+  console.log("buf samples: ", bufSamples);
+
+  commit('SET_STATE_PROPERTY', { property: "samples", value: bufSamples });
+
+  console.log("saving channels: ", data);
+
+  axios.post(`${baseUrl}/save/${location}/${state.selectedSample.name}`, data)
+    .then(response => {
+      console.log(response);
+    })
+}
+
+/**
  * Deletes an overlay from the current state.
  * @param {Object} context - Vuex context object.
  * @param {number} index - The index of the overlay to delete.
