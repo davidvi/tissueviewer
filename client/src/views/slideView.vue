@@ -342,12 +342,20 @@ export default {
       },
       filteredSamples() {
         // If "Any" ('') is selected, return all samples; otherwise, filter by folder
+        let filtered = [];
         if (!this.selectedFolder) {
-          return this.samples;
+          filtered = this.samples;
+        } else {
+          filtered = this.samples.filter(
+            sample => sample.details && sample.details.folder === this.selectedFolder
+          );
         }
-        return this.samples.filter(
-          sample => sample.details && sample.details.folder === this.selectedFolder
-        );
+        // Sort alphabetically by display name (altName if available, otherwise name)
+        return filtered.sort((a, b) => {
+          const nameA = (a.details && a.details.altName) ? a.details.altName : a.name;
+          const nameB = (b.details && b.details.altName) ? b.details.altName : b.name;
+          return nameA.localeCompare(nameB);
+        });
       },
       activeOverlayLegend() {
         // If no overlay file is selected, return null
