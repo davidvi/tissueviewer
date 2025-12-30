@@ -5,6 +5,8 @@ import math
 from io import BytesIO
 from typing import Dict, List, Tuple
 import threading
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import cv2
 import numpy as np
@@ -209,17 +211,30 @@ class OmeTiffPyramid:
         if level < 0 or level > self.max_level:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid level")
 
+        # Select the appropriate pyramid level
+        # Calculate how many levels down we need to go
+        level_downscale = self.max_level - level
+        
+        # Find the best matching pyramid level
+        # Each pyramid level is typically 2x smaller than the previous
+        pyramid_level_idx = min(level_downscale // 1, len(self.levels) - 1)
+        level_arr = self.levels[pyramid_level_idx]
+        
+        # Calculate the actual scale factor for this pyramid level
+        # If we have multiple pyramid levels, each is typically 2x smaller
+        pyramid_scale = 2 ** pyramid_level_idx
+        
+        # Adjust coordinates for the selected pyramid level
         scale = 2 ** (self.max_level - level)
-        x0 = tile_x * self.tile_size * scale
-        y0 = tile_y * self.tile_size * scale
-        x1 = min(self.width, x0 + self.tile_size * scale)
-        y1 = min(self.height, y0 + self.tile_size * scale)
+        x0 = tile_x * self.tile_size * scale // pyramid_scale
+        y0 = tile_y * self.tile_size * scale // pyramid_scale
+        x1 = min(level_arr.shape[self.x_axis], x0 + (self.tile_size * scale // pyramid_scale))
+        y1 = min(level_arr.shape[self.y_axis], y0 + (self.tile_size * scale // pyramid_scale))
 
-        if x0 >= self.width or y0 >= self.height:
+        if x0 >= level_arr.shape[self.x_axis] or y0 >= level_arr.shape[self.y_axis]:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tile out of bounds")
 
         with self._lock:
-            level_arr = self.levels[0]  # always slice highest resolution; downscale locally
             patches = []
             if self.channel_axis is None:
                 # Grayscale data
@@ -316,44 +331,215 @@ app.mount("/assets", StaticFiles(directory=os.path.join(client_dir, "assets")), 
 app.mount("/images", StaticFiles(directory=os.path.join(client_dir, "images")), name="images")
 
 
+def get_metadata_json_path(tiff_path: str) -> str:
+    """
+    Get the path to the metadata.json file for a given OME-TIFF file.
+    Follows the same pattern as .sample.json files.
+    """
+    # Get the directory and base filename
+    dir_path = os.path.dirname(tiff_path)
+    filename = os.path.basename(tiff_path)
+    
+    # Remove .ome.tif or .ome.tiff extension to get base name
+    if filename.lower().endswith('.ome.tiff'):
+        base_name = filename[:-9]  # Remove '.ome.tiff'
+    elif filename.lower().endswith('.ome.tif'):
+        base_name = filename[:-8]  # Remove '.ome.tif'
+    else:
+        base_name = filename
+    
+    # Return path following same pattern as .sample.json
+    return os.path.join(dir_path, f"{base_name}.metadata.json")
+
+
+def load_metadata_from_cache(tiff_path: str) -> dict:
+    """
+    Load metadata from .metadata.json cache file if it exists.
+    Returns None if cache doesn't exist or is invalid.
+    """
+    metadata_path = get_metadata_json_path(tiff_path)
+    if not os.path.exists(metadata_path):
+        return None
+    
+    try:
+        with open(metadata_path, 'r') as f:
+            metadata = json.load(f)
+        # Verify the cache is for the same file by checking file modification time
+        tiff_mtime = os.path.getmtime(tiff_path)
+        if 'file_mtime' in metadata and metadata['file_mtime'] == tiff_mtime:
+            return metadata.get('metadata', metadata)  # Support both formats
+        else:
+            # Cache is stale, return None to regenerate
+            return None
+    except (json.JSONDecodeError, IOError, OSError) as e:
+        print(f"Error reading metadata cache {metadata_path}: {e}")
+        return None
+
+
+def save_metadata_to_cache(tiff_path: str, metadata: dict):
+    """
+    Save metadata to .metadata.json cache file.
+    Follows the same pattern as .sample.json files.
+    """
+    metadata_path = get_metadata_json_path(tiff_path)
+    try:
+        # Include file modification time for cache validation
+        cache_data = {
+            'file_mtime': os.path.getmtime(tiff_path),
+            'metadata': metadata
+        }
+        with open(metadata_path, 'w') as f:
+            json.dump(cache_data, f, indent=2)
+    except (IOError, OSError) as e:
+        print(f"Error saving metadata cache {metadata_path}: {e}")
+
+
+def extract_metadata_lightweight(path: str) -> dict:
+    """
+    Extract minimal metadata from OME-TIFF without loading full pyramid.
+    Much faster than creating OmeTiffPyramid for file listing.
+    """
+    try:
+        with tifffile.TiffFile(path) as tiff:
+            series = tiff.series[0]
+            axes = series.axes
+            
+            # Get shape from series (doesn't load data)
+            shape = series.shape
+            axes_list = list(axes)
+            
+            # Determine axis indices
+            channel_axis = axes_list.index("C") if "C" in axes_list else None
+            y_axis = axes_list.index("Y")
+            x_axis = axes_list.index("X")
+            
+            # Extract dimensions
+            height = shape[y_axis]
+            width = shape[x_axis]
+            channel_count = shape[channel_axis] if channel_axis is not None else 1
+            dtype = series.dtype
+            
+            # Extract channel info from OME-XML
+            channel_info = extract_channel_info(tiff, channel_count)
+            
+            return {
+                "axes": axes,
+                "shape": [height, width],
+                "dtype": str(dtype),
+                "channels": channel_count,
+                "channel_info": channel_info,
+            }
+    except Exception as e:
+        raise ValueError(f"Failed to read metadata from {os.path.basename(path)}: {e}")
+
+
+def get_metadata_for_file(tiff_path: str, use_cache: bool = True) -> dict:
+    """
+    Get metadata for an OME-TIFF file, using cache if available.
+    
+    Args:
+        tiff_path: Path to the OME-TIFF file
+        use_cache: If True, use cached metadata if available and valid
+    
+    Returns:
+        Dictionary containing metadata
+    """
+    # Try to load from cache first
+    if use_cache:
+        cached_metadata = load_metadata_from_cache(tiff_path)
+        if cached_metadata is not None:
+            return cached_metadata
+    
+    # Generate metadata from file
+    metadata = extract_metadata_lightweight(tiff_path)
+    
+    # Save to cache
+    if use_cache:
+        save_metadata_to_cache(tiff_path, metadata)
+    
+    return metadata
+
+
+def generate_metadata_for_new_file(tiff_path: str):
+    """
+    Generate and save metadata.json for a newly added OME-TIFF file.
+    This can be called when a new file is detected.
+    Creates {name}.metadata.json next to the OME-TIFF file.
+    """
+    if not os.path.exists(tiff_path):
+        raise FileNotFoundError(f"File not found: {tiff_path}")
+    
+    if not (tiff_path.lower().endswith('.ome.tif') or tiff_path.lower().endswith('.ome.tiff')):
+        raise ValueError(f"File is not an OME-TIFF: {tiff_path}")
+    
+    try:
+        metadata = extract_metadata_lightweight(tiff_path)
+        save_metadata_to_cache(tiff_path, metadata)
+        print(f"Generated metadata cache for {os.path.basename(tiff_path)}")
+    except Exception as e:
+        print(f"Failed to generate metadata for {tiff_path}: {e}")
+        raise
+
+
+def _process_single_file(entry: os.DirEntry, base_dir: str) -> dict:
+    """
+    Process a single OME-TIFF file and return dataset info.
+    Used as a worker function for parallel processing.
+    """
+    try:
+        # Use cached metadata if available
+        metadata = get_metadata_for_file(entry.path, use_cache=True)
+        
+        dataset_info = {
+            "name": entry.name.rsplit(".ome", 1)[0],
+            "details": {},
+            "metadata": [metadata],
+        }
+        
+        # Load .sample.json if it exists (same pattern as metadata.json)
+        sample_json_path = os.path.join(base_dir, f"{dataset_info['name']}.sample.json")
+        if os.path.exists(sample_json_path):
+            with open(sample_json_path, "r") as f:
+                dataset_info["details"] = json.load(f)
+        
+        return dataset_info
+    except Exception as e:
+        print(f"Error loading {entry.path}: {e}")
+        return None
+
+
 def find_ome_tiffs(base_dir: str) -> list:
     """
     Finds all OME-TIFF files in base_dir at depth 1.
+    Uses lightweight metadata extraction with parallel processing and caching.
+    Metadata is cached in {name}.metadata.json files, same pattern as .sample.json
     """
     ome_files = []
 
     if not os.path.exists(base_dir):
         return []
 
-    with os.scandir(base_dir) as entries:
-        for entry in entries:
+    # Collect all OME-TIFF files first
+    entries = []
+    with os.scandir(base_dir) as dir_entries:
+        for entry in dir_entries:
             if entry.is_file() and (entry.name.lower().endswith(".ome.tif") or entry.name.lower().endswith(".ome.tiff")):
-                try:
-                    pyramid = tile_cache.get(entry.path)
-                    channel_count = pyramid.levels[0].shape[pyramid.channel_axis] if pyramid.channel_axis is not None else 1
-                    channel_info = extract_channel_info(pyramid.tiff, channel_count)
-
-                    dataset_info = {
-                        "name": entry.name.rsplit(".ome", 1)[0],
-                        "details": {},
-                        # Keep metadata as list to match client expectations (metadata[0])
-                        "metadata": [{
-                            "axes": pyramid.axes,
-                            "shape": [pyramid.height, pyramid.width],
-                            "dtype": str(pyramid.dtype),
-                            "channels": channel_count,
-                            "channel_info": channel_info,
-                        }],
-                    }
-                    sample_json_path = os.path.join(base_dir, f"{dataset_info['name']}.sample.json")
-                    if os.path.exists(sample_json_path):
-                        with open(sample_json_path, "r") as f:
-                            dataset_info["details"] = json.load(f)
-                    ome_files.append(dataset_info)
-                except Exception as e:
-                    # Skip problematic files but continue listing others
-                    print(f"Error loading {entry.path}: {e}")
-                    continue
+                entries.append(entry)
+    
+    # Process files in parallel
+    # Use max_workers=None to use min(32, num_files) workers
+    with ThreadPoolExecutor(max_workers=None) as executor:
+        # Submit all tasks
+        future_to_entry = {
+            executor.submit(_process_single_file, entry, base_dir): entry 
+            for entry in entries
+        }
+        
+        # Collect results as they complete
+        for future in as_completed(future_to_entry):
+            result = future.result()
+            if result is not None:
+                ome_files.append(result)
 
     return ome_files
 
@@ -383,8 +569,12 @@ async def get_dzi(
     if not os.path.exists(path_to_tiff):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="OME-TIFF not found")
 
+    # print('start loading tile_cache')
     pyramid = tile_cache.get(path_to_tiff)
+    # print('done loading tile_cache')
+    # print('start getting content')
     dzi_content = pyramid.dzi_xml()
+    # print('done getting content for dzi')
     return Response(content=dzi_content, media_type="application/xml", status_code=200)
 
 
@@ -405,17 +595,28 @@ async def get_tile(
         path_to_tiff = os.path.join(settings.SLIDE_DIR, location, f"{file}.ome.tif")
     if not os.path.exists(path_to_tiff):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="OME-TIFF not found")
-
+    
+    # print('start loading tile_cache')
     pyramid = tile_cache.get(path_to_tiff)
+    # print('done loading tile_cache')
 
     channels = [int(x) for x in chs.split(";") if x != ""]
     colors_list = [c for c in colors.split(";") if c != ""]
     gains_list = [float(x) for x in gains.split(";") if x != ""]
 
+    # start_time = time.time()
+    # print('start getting tile')
     tile = pyramid.get_tile(level, loc_x, loc_y, channels, colors_list, gains_list, rgb)
+    # print('done getting tile')
+    # end_time = time.time()
+    # print(f'time taken: {end_time - start_time} seconds')
+
+    # print('convert tile')
     tile_rgb = cv2.cvtColor(tile, cv2.COLOR_BGR2RGB)
     img_bytes = cv2.imencode(".jpeg", tile_rgb)[1].tobytes()
     img_io = BytesIO(img_bytes)
+    # print('done converting tile')
+
     return Response(content=img_io.getvalue(), media_type="image/jpeg")
 
 
