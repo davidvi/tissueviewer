@@ -59,9 +59,6 @@
       <button class="p-2" @click="copyLinkToClipboard">
         <share-icon class="icon" />
       </button>
-      <button class="p-2" @click="saveDetails">
-          <archive-box-icon class="icon" />
-      </button>
       <button class="p-2" @click="windowMinimal = !windowMinimal">
         <div v-if="windowMinimal">
           <plus-circle-icon class="icon" />
@@ -277,7 +274,7 @@
 import OpenSeadragon from "openseadragon";
 import { mapGetters, mapActions, mapState, mapMutations } from "vuex";
 
-import { BeakerIcon, MinusCircleIcon, PlusCircleIcon, ArchiveBoxIcon, 
+import { BeakerIcon, MinusCircleIcon, PlusCircleIcon, 
   XCircleIcon, ShareIcon } from '@heroicons/vue/24/solid'
 
 import LogSlider from "../components/LogSlider.vue";
@@ -287,7 +284,6 @@ export default {
     BeakerIcon, 
     MinusCircleIcon,
     PlusCircleIcon,
-    ArchiveBoxIcon,
     XCircleIcon,
     ShareIcon,
     LogSlider,
