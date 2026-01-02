@@ -32,10 +32,10 @@ export default {
   computed: {
     gain() {
       // Enhanced logarithmic scaling to allow much lower values
-      // Scale goes from 0.001 to 5 (instead of 0.01 to 5)
+      // Scale goes from 0.001 to 10 (instead of 0.01 to 5)
       // Using log scale: 10^(slider_position * range + min_exponent)
       const minExponent = -3; // 10^-3 = 0.001
-      const maxExponent = 0.699; // 10^0.699 ≈ 5
+      const maxExponent = 1; // 10^1 = 10
       const range = maxExponent - minExponent;
       const exponent = minExponent + (this.sliderValue / 100) * range;
       return Number(Math.pow(10, exponent).toFixed(6));
@@ -61,11 +61,11 @@ export default {
     setGainFromOutside(newGain) {
       // Reverse calculation to set slider position from gain value
       const minExponent = -3;
-      const maxExponent = 0.699;
+      const maxExponent = 1;
       const range = maxExponent - minExponent;
       
       // Clamp the gain to our supported range
-      const clampedGain = Math.max(0.001, Math.min(5, newGain));
+      const clampedGain = Math.max(0.001, Math.min(10, newGain));
       const logGain = Math.log10(clampedGain);
       this.sliderValue = Math.round(((logGain - minExponent) / range) * 100);
     },
