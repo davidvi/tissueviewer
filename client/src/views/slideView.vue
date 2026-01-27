@@ -668,108 +668,123 @@ export default {
     },
     
     processCSV(csvContent, fileName) {
-      // Simple CSV parsing
-      const lines = csvContent.split('\n');
-      const headers = lines[0].split(',');
-      
-      // Expected headers: x, y, description (optional)
-      const xIndex = headers.findIndex(h => h.toLowerCase().trim() === 'x');
-      const yIndex = headers.findIndex(h => h.toLowerCase().trim() === 'y');
-      const labelIndex = headers.findIndex(h => h.toLowerCase().trim() === 'label' || h.toLowerCase().trim() === 'description');
-      
-      if (xIndex === -1 || yIndex === -1) {
-        alert("CSV file must contain columns for 'x' and 'y' coordinates");
-        return;
+  // Simple CSV parsing
+  const lines = csvContent.split('\n');
+  const headers = lines[0].split(',');
+  
+  // Expected headers: x, y, description (optional)
+  const xIndex = headers.findIndex(h => h.toLowerCase().trim() === 'x');
+  const yIndex = headers.findIndex(h => h.toLowerCase().trim() === 'y');
+  const labelIndex = headers.findIndex(h => h.toLowerCase().trim() === 'label' || h.toLowerCase().trim() === 'description');
+  
+  if (xIndex === -1 || yIndex === -1) {
+    alert("CSV file must contain columns for 'x' and 'y' coordinates");
+    return;
+  }
+  
+  // Collect all unique labels and assign colors
+  const uniqueLabels = new Set();
+  for (let i = 1; i < lines.length; i++) {
+    if (!lines[i].trim()) continue;
+    const values = lines[i].split(',');
+    if (labelIndex !== -1 && values[labelIndex]) {
+      uniqueLabels.add(values[labelIndex].trim());
+    }
+  }
+  
+  // Generate a color map for each unique label
+  const colorMap = this.generateColorMap(Array.from(uniqueLabels));
+  
+  const pointOverlays = [];
+  
+  // Check coordinate scale - find max values
+  let maxX = 0, maxY = 0;
+  for (let i = 1; i < lines.length; i++) {
+    if (!lines[i].trim()) continue;
+    const values = lines[i].split(',');
+    const x = parseFloat(values[xIndex]);
+    const y = parseFloat(values[yIndex]);
+    if (!isNaN(x) && !isNaN(y)) {
+      maxX = Math.max(maxX, x);
+      maxY = Math.max(maxY, y);
+    }
+  }
+  
+  console.log(`Coordinate ranges - X: 0-${maxX}, Y: 0-${maxY}`);
+  
+  // Determine if coordinates are already normalized (0-1 range)
+  const isNormalized = maxX <= 1 && maxY <= 1;
+  console.log(`Coordinates are ${isNormalized ? 'already normalized' : 'in pixel space'}`);
+  
+  // Get image dimensions if needed
+  let imageWidth = 1, imageHeight = 1;
+  if (!isNormalized) {
+    if (!this.viewer || this.viewer.world.getItemCount() === 0) {
+      alert("Cannot normalize coordinates: No image is currently loaded.");
+      return;
+    }
+    imageWidth = this.viewer.world.getItemAt(0).source.dimensions.x;
+    imageHeight = this.viewer.world.getItemAt(0).source.dimensions.y;
+    console.log(`Normalizing using image dimensions: ${imageWidth}x${imageHeight}`);
+  }
+  
+  // Get the aspect ratio for OpenSeadragon viewport coordinates
+  let aspectRatio = 1;
+  if (this.viewer && this.viewer.world.getItemCount() > 0) {
+    const tiledImage = this.viewer.world.getItemAt(0);
+    aspectRatio = tiledImage.source.dimensions.x / tiledImage.source.dimensions.y;
+    console.log(`Image aspect ratio: ${aspectRatio}`);
+  }
+  
+  // Process data rows
+  for (let i = 1; i < lines.length; i++) {
+    if (!lines[i].trim()) continue;
+    
+    const values = lines[i].split(',');
+    let x = parseFloat(values[xIndex]);
+    let y = parseFloat(values[yIndex]);
+    const label = labelIndex !== -1 ? values[labelIndex].trim() : `Point ${i}`;
+    
+    if (!isNaN(x) && !isNaN(y)) {
+      // Normalize if in pixel space
+      if (!isNormalized) {
+        x = x / imageWidth;
+        y = y / imageHeight;
       }
       
-      // Collect all unique labels and assign colors
-      const uniqueLabels = new Set();
-      for (let i = 1; i < lines.length; i++) {
-        if (!lines[i].trim()) continue; // Skip empty lines
-        const values = lines[i].split(',');
-        if (labelIndex !== -1 && values[labelIndex]) {
-          uniqueLabels.add(values[labelIndex].trim());
-        }
-      }
+      // Convert to OpenSeadragon viewport coordinates
+      // In OSD, x ranges from 0 to 1, and y ranges from 0 to 1/aspectRatio
+      const osdX = x;
+      const osdY = y / aspectRatio;
       
-      // Generate a color map for each unique label
-      const colorMap = this.generateColorMap(Array.from(uniqueLabels));
-      
-      const pointOverlays = [];
-      
-      // First pass to check coordinate scale
-      let needsNormalization = false;
-      
-      for (let i = 1; i < lines.length; i++) {
-        if (!lines[i].trim()) continue; // Skip empty lines
-        
-        const values = lines[i].split(',');
-        const x = parseFloat(values[xIndex]);
-        const y = parseFloat(values[yIndex]);
-        
-        if (!isNaN(x) && !isNaN(y)) {
-          // If we find coordinates > 1, they're likely in actual image coordinates
-          if (x > 1 || y > 1) {
-            needsNormalization = true;
-            break;
-          }
-        }
-      }
-
-      console.log(`Needs normalization: ${needsNormalization}`);
-      
-      // Get image dimensions if available and needed
-      let imageWidth = 1, imageHeight = 1;
-      if (needsNormalization) {
-        if (!this.viewer || this.viewer.world.getItemCount() === 0) {
-          alert("Cannot normalize coordinates: No image is currently loaded. Please load an image first.");
-          return;
-        }
-        
-        imageWidth = this.viewer.world.getItemAt(0).source.dimensions.x;
-        imageHeight = this.viewer.world.getItemAt(0).source.dimensions.y; 
-        console.log(`Normalizing coordinates using image dimensions: ${imageWidth}x${imageHeight}`);
-      }
-      
-      // Skip header row, process data rows
-      for (let i = 1; i < lines.length; i++) {
-        if (!lines[i].trim()) continue; // Skip empty lines
-        
-        const values = lines[i].split(',');
-        let x = parseFloat(values[xIndex]);
-        let y = parseFloat(values[yIndex]);
-        const label = labelIndex !== -1 ? values[labelIndex].trim() : `Point ${i}`;
-        
-        if (!isNaN(x) && !isNaN(y)) {
-          // Normalize coordinates if needed
-          if (needsNormalization) {
-            x = x / imageWidth;
-            y = y / imageHeight;
-          }
-          
-          pointOverlays.push({
-            location: {
-              x: x,
-              y: y
-            },
-            description: label,
-            color: colorMap[label] || '#FF0000', // Default to red if no color found
-          });
-        }
-      }
-      
-      // Add to overlay files list
-      const newOverlayFile = {
-        id: Date.now().toString(),
-        name: fileName,
-        data: pointOverlays,
-        colorMap: colorMap
-      };
-      
-      this.overlayFiles.push(newOverlayFile);
-      this.selectedOverlayFile = newOverlayFile.id;
-      this.displayPointOverlays(pointOverlays);
-    },
+      pointOverlays.push({
+        location: {
+          x: osdX,
+          y: osdY
+        },
+        description: label,
+        color: colorMap[label] || '#FF0000',
+      });
+    }
+  }
+  
+  console.log(`Processed ${pointOverlays.length} points`);
+  if (pointOverlays.length > 0) {
+    console.log(`First point: (${pointOverlays[0].location.x}, ${pointOverlays[0].location.y})`);
+  }
+  
+  // Add to overlay files list
+  const newOverlayFile = {
+    id: Date.now().toString(),
+    name: fileName,
+    data: pointOverlays,
+    colorMap: colorMap
+  };
+  
+  this.overlayFiles.push(newOverlayFile);
+  this.selectedOverlayFile = newOverlayFile.id;
+  this.displayPointOverlays(pointOverlays);
+},
     
     loadSelectedOverlay() {
       if (!this.selectedOverlayFile) return;
