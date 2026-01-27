@@ -716,7 +716,7 @@ export default {
         }
       }
 
-      console.log("Needs normalization: ${needsNormalization}")
+      console.log(`Needs normalization: ${needsNormalization}`);
       
       // Get image dimensions if available and needed
       let imageWidth = 1, imageHeight = 1;
