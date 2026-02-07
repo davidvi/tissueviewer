@@ -536,7 +536,54 @@ export default {
         zoomPerScroll: 2,
         showNavigationControl: true,
         navigationControlAnchor: OpenSeadragon.ControlAnchor.TOP_LEFT,
+
+        imageLoaderLimit: 2,          // Only 2 concurrent tile requests
+        immediateRender: false,       // Wait before rendering
+        placeholderFillStyle: '#000', // Black placeholder while loading
+        
       });
+      // start speedup
+      let scrollTimeout = null;
+      let wasPaused = false;
+
+      const pauseLoading = () => {
+        if (!wasPaused && this.viewer.world.getItemCount() > 0) {
+          // Freeze all tiled images to stop requesting new tiles
+          for (let i = 0; i < this.viewer.world.getItemCount(); i++) {
+            this.viewer.world.getItemAt(i).setPreload(false);
+          }
+          wasPaused = true;
+        }
+      };
+
+      const resumeLoading = () => {
+        if (wasPaused && this.viewer.world.getItemCount() > 0) {
+          for (let i = 0; i < this.viewer.world.getItemCount(); i++) {
+            this.viewer.world.getItemAt(i).setPreload(true);
+          }
+          wasPaused = false;
+          // Force a redraw to load visible tiles
+          this.viewer.forceRedraw();
+        }
+      };
+
+      this.viewer.addHandler('canvas-scroll', () => {
+        pauseLoading();
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(resumeLoading, 400); // Resume 400ms after scroll stops
+      });
+
+      this.viewer.addHandler('canvas-drag', () => {
+        pauseLoading();
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(resumeLoading, 400);
+      });
+
+      this.viewer.addHandler('canvas-drag-end', () => {
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(resumeLoading, 200);
+      });
+      // end speed
 
       // Add handlers for viewport changes to update point overlays
       this.viewer.addHandler('animation', () => {
