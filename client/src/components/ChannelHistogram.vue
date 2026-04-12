@@ -129,47 +129,9 @@ export default {
       if (!this.storeSampleName) return;
       this.loading = true;
       try {
-        // Fetch DZI XML to get image dimensions
-        const dziUrl = `${baseUrl}/${this.storeLocation}/${this.channelNumber}/false/white/1.0/0.0/1.0/${this.storeSampleName}.dzi`;
-        const dziResp = await axios.get(dziUrl);
-
-        // Parse width/height to choose a small level for sampling
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(dziResp.data, 'application/xml');
-        const sizeEl = doc.querySelector('Size');
-        const w = parseInt(sizeEl?.getAttribute('Width') || '1024');
-        const h = parseInt(sizeEl?.getAttribute('Height') || '1024');
-        const maxLevel = Math.ceil(Math.log2(Math.max(w, h)));
-        // Target ~256px coverage: go 8 levels below max
-        const targetLevel = Math.max(0, maxLevel - 8);
-
-        // Fetch the overview tile (top-left, covers whole image at low res)
-        const tileUrl = `${baseUrl}/${this.storeLocation}/${this.channelNumber}/false/white/1.0/0.0/1.0/${this.storeSampleName}_files/${targetLevel}/0_0.jpeg`;
-        const tileResp = await axios.get(tileUrl, { responseType: 'blob' });
-
-        // Draw on offscreen canvas and read pixel data
-        const img = new Image();
-        const blobUrl = URL.createObjectURL(tileResp.data);
-        await new Promise((resolve, reject) => {
-          img.onload = resolve;
-          img.onerror = reject;
-          img.src = blobUrl;
-        });
-        URL.revokeObjectURL(blobUrl);
-
-        const canvas = document.createElement('canvas');
-        canvas.width = img.width;
-        canvas.height = img.height;
-        canvas.getContext('2d').drawImage(img, 0, 0);
-        const { data } = canvas.getContext('2d').getImageData(0, 0, img.width, img.height);
-
-        // Count pixels into bins (use R channel — grayscale white rendering means R=G=B)
-        const counts = new Array(NUM_BINS).fill(0);
-        for (let i = 0; i < data.length; i += 4) {
-          const bin = Math.min(NUM_BINS - 1, Math.floor((data[i] / 255) * NUM_BINS));
-          counts[bin]++;
-        }
-        this.bins = counts;
+        const url = `${baseUrl}/histogram/${this.storeLocation}/${this.channelNumber}/${this.storeSampleName}`;
+        const resp = await axios.get(url);
+        this.bins = resp.data.bins;
       } catch (e) {
         console.error('ChannelHistogram: fetch failed', e);
         this.bins = new Array(NUM_BINS).fill(1);

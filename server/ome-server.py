@@ -559,6 +559,37 @@ def find_ome_tiffs(base_dir: str) -> list:
     return ome_files
 
 
+@app.get("/histogram/{location}/{channel}/{file}")
+async def get_histogram(location: str, channel: int, file: str):
+    """
+    Return a 64-bin histogram of normalized pixel values for a single channel
+    across the full image. Uses the lowest-resolution pyramid level for fast
+    full-image coverage.
+    Response: { "bins": [count0, ..., count63] }
+    """
+    path_to_tiff = os.path.join(settings.SLIDE_DIR, location, f"{file}.ome.tiff")
+    if not os.path.exists(path_to_tiff):
+        path_to_tiff = os.path.join(settings.SLIDE_DIR, location, f"{file}.ome.tif")
+    if not os.path.exists(path_to_tiff):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="OME-TIFF not found")
+
+    pyramid = tile_cache.get(path_to_tiff)
+
+    # Use the smallest (lowest-resolution) pyramid level for full coverage
+    level_arr = pyramid.levels[-1]
+
+    with pyramid._lock:
+        if pyramid.channel_axis is not None:
+            patch = level_arr[pyramid._slice_for_region(channel, 0, level_arr.shape[pyramid.y_axis], 0, level_arr.shape[pyramid.x_axis])]
+        else:
+            patch = level_arr[:]
+
+    arr = np.asarray(patch, dtype=np.float32)
+    flat = arr.flatten() / pyramid.dtype_max
+    counts, _ = np.histogram(flat, bins=64, range=(0.0, 1.0))
+    return JSONResponse(content={"bins": counts.tolist()})
+
+
 @app.get("/samples.json")
 async def samples(location: str = Query("public", description="Location to search for samples")):
     search_dir = os.path.join(settings.SLIDE_DIR, location)
