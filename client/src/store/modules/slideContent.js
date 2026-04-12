@@ -149,7 +149,7 @@ export const reloadSlide = async ({ state, commit }) => {
   state.activatedSample.forEach((ch) => {
     if(ch.stain != "empty" && ch.activated) {
       stainList.push(`${ch.stain}`);
-      gainList.push(`${ch.gain}`);
+      gainList.push('1.0');
       chList.push(`${ch.channel_number}`);
       minList.push(ch.low != null ? ch.low : 0.0);
       maxList.push(ch.high != null ? ch.high : 1.0);
@@ -201,7 +201,6 @@ export const loadSample = async ({ state, commit, dispatch }) => {
       const channelInfo = {
         channel_name: ch.channel_name ? ch.channel_name : index,
         channel_number: index,
-        gain: selectedSampleBuf.details.gain && selectedSampleBuf.details.gain[index] ? selectedSampleBuf.details.gain[index] : 1,
         stain : selectedSampleBuf.details.ch_stain && selectedSampleBuf.details.ch_stain[index] ? selectedSampleBuf.details.ch_stain[index] : "empty",
         activated: true,
         low: 0.0,
@@ -210,7 +209,7 @@ export const loadSample = async ({ state, commit, dispatch }) => {
       activatedSample.push(channelInfo);
     });
   } else {
-    activatedSample = selectedSampleBuf.details.channelsSetting.map(ch => ({
+    activatedSample = selectedSampleBuf.details.channelsSetting.map(({ gain, ...ch }) => ({
       low: 0.0,
       high: 1.0,
       ...ch,
