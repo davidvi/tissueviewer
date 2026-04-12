@@ -15,7 +15,6 @@
     </span>
   </div>
 </template>
-
 <script>
 export default {
   props: {
@@ -26,22 +25,28 @@ export default {
   },
   data() {
     return {
-      sliderValue: 0, // Will be set in created hook
+      sliderValue: 0,
     };
   },
   computed: {
     gain() {
-      // Enhanced logarithmic scaling to allow much lower values
-      // Scale goes from 0.001 to 5 (instead of 0.01 to 5)
-      // Using log scale: 10^(slider_position * range + min_exponent)
-      const minExponent = -3; // 10^-3 = 0.001
-      const maxExponent = 0.699; // 10^0.699 ≈ 5
-      const range = maxExponent - minExponent;
-      const exponent = minExponent + (this.sliderValue / 100) * range;
+      let exponent;
+      
+      if (this.sliderValue <= 50) {
+        const minExponent = -3;
+        const maxExponent = Math.log10(5);
+        const normalizedPos = this.sliderValue / 50;
+        exponent = minExponent + normalizedPos * (maxExponent - minExponent);
+      } else {
+        const minExponent = Math.log10(5);
+        const maxExponent = Math.log10(30);
+        const normalizedPos = (this.sliderValue - 50) / 50;
+        exponent = minExponent + normalizedPos * (maxExponent - minExponent);
+      }
+      
       return Number(Math.pow(10, exponent).toFixed(6));
     },
     formattedGain() {
-      // Smart formatting based on value magnitude
       if (this.gain >= 1) {
         return this.gain.toFixed(2);
       } else if (this.gain >= 0.01) {
@@ -59,19 +64,23 @@ export default {
       this.$emit('change');
     },
     setGainFromOutside(newGain) {
-      // Reverse calculation to set slider position from gain value
-      const minExponent = -3;
-      const maxExponent = 0.699;
-      const range = maxExponent - minExponent;
-      
-      // Clamp the gain to our supported range
-      const clampedGain = Math.max(0.001, Math.min(5, newGain));
+      const clampedGain = Math.max(0.001, Math.min(30, newGain));
       const logGain = Math.log10(clampedGain);
-      this.sliderValue = Math.round(((logGain - minExponent) / range) * 100);
+      
+      if (clampedGain <= 5) {
+        const minExponent = -3;
+        const maxExponent = Math.log10(5);
+        const normalizedPos = (logGain - minExponent) / (maxExponent - minExponent);
+        this.sliderValue = Math.round(normalizedPos * 50);
+      } else {
+        const minExponent = Math.log10(5);
+        const maxExponent = Math.log10(30);
+        const normalizedPos = (logGain - minExponent) / (maxExponent - minExponent);
+        this.sliderValue = Math.round(50 + normalizedPos * 50);
+      }
     },
   },
   created() {
-    // Initialize the slider value based on the initial gain
     this.setGainFromOutside(this.initialGain);
   },
   watch: {
@@ -81,9 +90,7 @@ export default {
   }
 };
 </script>
-
 <style scoped>
-/* Enhanced slider styling */
 .slider {
   -webkit-appearance: none;
   appearance: none;
@@ -92,7 +99,6 @@ export default {
   border-radius: 3px;
   outline: none;
 }
-
 .slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
@@ -104,7 +110,6 @@ export default {
   cursor: pointer;
   box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
-
 .slider::-moz-range-thumb {
   width: 16px;
   height: 16px;
@@ -115,12 +120,10 @@ export default {
   box-shadow: 0 2px 4px rgba(0,0,0,0.2);
   border: none;
 }
-
 .slider:hover::-webkit-slider-thumb {
   box-shadow: 0 2px 8px rgba(0,0,0,0.3);
   transform: scale(1.1);
 }
-
 .slider:hover::-moz-range-thumb {
   box-shadow: 0 2px 8px rgba(0,0,0,0.3);
   transform: scale(1.1);

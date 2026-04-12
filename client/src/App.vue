@@ -3,7 +3,7 @@ import { RouterLink, RouterView } from 'vue-router'
 </script>
 
 <template>
-  <nav class="bg-gray-800 text-white p-4">
+  <!-- <nav class="bg-gray-800 text-white p-4">
     <ul class="flex justify-between">
       <div class="flex space-x-4">
         <li>
@@ -14,7 +14,7 @@ import { RouterLink, RouterView } from 'vue-router'
         </li>
       </div>
     </ul>
-  </nav>
+  </nav> -->
   <RouterView />
 </template>
 

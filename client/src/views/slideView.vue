@@ -1,16 +1,13 @@
 <template>
  <div class="flex min-h-screen">
-
 <!-- OVERLAY -->
 <div id="right-arrow-overlay" hidden>
   <span class="text-2xl text-white">&rarr;</span>
 </div>
-
 <!-- VIEW -->
 <div id="view" class="w-full h-full relative">
   <div v-if="!hasActiveChannels" id="viewEmpty" class="absolute inset-0 bg-black z-10"></div>
 </div>
-
 <!-- HUD -->
 <div id="hud" class="fixed bottom-5 left-5 max-w-60 max-h-60 overflow-y-auto bg-black bg-opacity-70 p-2 rounded-md text-white" v-if="activatedSampleLocal && activatedSampleLocal.length > 1 || activeOverlayLegend">
   <div v-if="activatedSampleLocal && activatedSampleLocal.length > 1">
@@ -37,18 +34,15 @@
   </div>
 </div>
 <!-- END HUD -->
-
 <!-- MINIMIZED -->
-<div id="minimized-menu" class="rounded text-gray-800 bg-gray-600" v-if="windowMinimal">
-  <div class="flex p-4">
+<div id="minimized-menu" class="rounded text-gray-800" v-if="windowMinimal">
+  <div class="flex justify-end p-4">
     <button class="p-2" @click="windowMinimal = !windowMinimal">
       <plus-circle-icon class="icon" />
     </button>
   </div>
 </div>
-
 <!-- END MINIMIZED -->
-
 <!-- NAVIGATION -->
 <div id="navigation-menu" class="rounded text-gray-800 bg-gray-600" v-if="!windowMinimal">
   <div class="flex items-center justify-between p-4">
@@ -58,9 +52,6 @@
     <div class="flex space-x-2">
       <button class="p-2" @click="copyLinkToClipboard">
         <share-icon class="icon" />
-      </button>
-      <button class="p-2" @click="saveDetails">
-          <archive-box-icon class="icon" />
       </button>
       <button class="p-2" @click="windowMinimal = !windowMinimal">
         <div v-if="windowMinimal">
@@ -80,7 +71,6 @@
       </select>
     </div>
   </div>
-
   <div class="px-4">
     <div class="mb-4">
       <strong class="text-white">Select folder</strong>
@@ -89,7 +79,6 @@
       </select>
     </div>
   </div>
-
   <!-- IF LOADING -->
   <div v-if="!filteredSamples.length" class="p-4">
     <div class="flex justify-center">
@@ -97,7 +86,6 @@
     </div>
   </div>
   <!-- IF NOT LOADING -->
-
   <div v-else class="px-4">
     <div class="mb-4">
       <strong class="text-white">Select slide</strong>
@@ -107,16 +95,14 @@
       <!-- add text field to add alternative name to slide -->
       <input type="text" v-model="selectedSampleAltNameLocal" class="block w-full mt-1 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md" placeholder="Alternative name">
       <button class="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded" @click="saveDetails">Rename</button>
-      <!-- add move to folder options, add a dropdown to select the folder or create a new folder with textbox-->
+      <!-- add move to folder options -->
       <select v-model="selectedSampleFolderDropdown" class="block w-full mt-1 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md">
         <option v-for="folder in folders" :value="folder.key">{{ folder.name }}</option>
       </select>
       <input type="text" v-model="newFolderName" class="block w-full mt-1 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md" placeholder="or create a new folder">
       <button class="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded" @click="addToFolder">Add to folder</button>
     </div>
-    <!-- IF WINDOW NOT MINIMIZED -->
-    <!-- <div v-if="!windowMinimal"> -->
-      <!-- <div v-if="selectedSample.files.length > 1"> -->
+
         <div class="mb-4">
           <strong class="text-white">Channels</strong>
           <div v-for="channel in activatedSampleLocal" :key="channel.channel_number">
@@ -131,30 +117,24 @@
                 <select v-model="channel.stain" class="flex-grow p-1 border rounded" @change="settingsChanged">
                   <option v-for="option in colorOptions" :value="option">{{ option }}</option>
                 </select>
-
                 <input type="checkbox" v-model="channel.activated" @change="settingsChanged">
-
-                <!-- <input type="range" v-model="channel.gain" max="5" min="0" step="0.01" class="flex-grow" @change="settingsChanged"> -->
-                 
                 <log-slider
                   :initial-gain="channel.gain"
                   v-model:gain="channel.gain"
                   @change="settingsChanged"
                   class="flex-grow"
                 />
-              
               </div>
             </div>
           </div>
+          <button class="mt-2 p-2 bg-blue-600 hover:bg-blue-700 text-white rounded" @click="saveChannels">Save channels</button>
         </div>
-
         <div class="mb-4">
           <strong class="text-white">Add channel</strong>
           <select v-model="addStainFileLocal" class="block w-full mt-1 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md" @change="addStain">
             <option v-for="option in activatedSample" :value="option.channel_number">{{ option.channel_name }}</option>
           </select>
         </div>
-
         <!-- copy settings from another slide -->
         <div class="mb-4">
           <strong class="text-white">Copy settings from another slide</strong>
@@ -163,6 +143,82 @@
           </select>
         </div>
         <button class="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded" @click="copySettingsLocal">Copy settings</button>
+
+      <!-- ROTATION & FLIP CONTROLS -->
+      <div class="mb-4 mt-4">
+        <strong class="text-white">Transform</strong>
+        <div class="mt-2 p-2 border rounded bg-gray-700">
+          <!-- Quick rotation buttons -->
+          <div class="flex items-center space-x-2 mb-2">
+            <button class="p-2 bg-gray-500 hover:bg-gray-400 text-white rounded text-sm" @click="rotateBy(-90)" title="Rotate 90° left">
+              ↺ 90°
+            </button>
+            <button class="p-2 bg-gray-500 hover:bg-gray-400 text-white rounded text-sm" @click="rotateBy(90)" title="Rotate 90° right">
+              ↻ 90°
+            </button>
+            <button class="p-2 bg-gray-500 hover:bg-gray-400 text-white rounded text-sm" @click="rotateBy(180)" title="Rotate 180°">
+              180°
+            </button>
+            <button class="p-2 bg-gray-500 hover:bg-gray-400 text-white rounded text-sm" @click="resetTransform" title="Reset">
+              Reset
+            </button>
+          </div>
+
+          <!-- Fine-grained rotation slider -->
+          <div class="mb-2">
+            <label class="text-white text-xs block mb-1">Rotation: {{ rotationAngle }}°</label>
+            <input
+              type="range"
+              v-model.number="rotationAngle"
+              min="0"
+              max="359"
+              step="1"
+              class="w-full h-2 bg-gray-300 rounded-lg appearance-none cursor-pointer"
+              @input="applyRotation"
+            />
+            <div class="flex items-center space-x-2 mt-1">
+              <input
+                type="number"
+                v-model.number="rotationAngle"
+                min="0"
+                max="359"
+                step="0.1"
+                class="w-20 p-1 text-sm border rounded text-gray-800"
+                @change="applyRotation"
+              />
+              <span class="text-white text-xs">degrees</span>
+              <!-- Fine adjustment buttons -->
+              <button class="px-2 py-1 bg-gray-500 hover:bg-gray-400 text-white rounded text-xs" @click="rotateBy(-1)">-1°</button>
+              <button class="px-2 py-1 bg-gray-500 hover:bg-gray-400 text-white rounded text-xs" @click="rotateBy(1)">+1°</button>
+              <button class="px-2 py-1 bg-gray-500 hover:bg-gray-400 text-white rounded text-xs" @click="rotateBy(-0.1)">-0.1°</button>
+              <button class="px-2 py-1 bg-gray-500 hover:bg-gray-400 text-white rounded text-xs" @click="rotateBy(0.1)">+0.1°</button>
+            </div>
+          </div>
+
+          <!-- Flip controls -->
+          <div class="flex items-center space-x-3 mt-2">
+            <label class="flex items-center cursor-pointer">
+              <div class="relative">
+                <input type="checkbox" v-model="flipHorizontal" class="sr-only" @change="applyFlip">
+                <div class="block bg-gray-600 w-10 h-6 rounded-full"></div>
+                <div class="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition"
+                     :class="{'transform translate-x-4': flipHorizontal}"></div>
+              </div>
+              <span class="ml-2 text-white text-sm">Flip H</span>
+            </label>
+            <label class="flex items-center cursor-pointer">
+              <div class="relative">
+                <input type="checkbox" v-model="flipVertical" class="sr-only" @change="applyFlip">
+                <div class="block bg-gray-600 w-10 h-6 rounded-full"></div>
+                <div class="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition"
+                     :class="{'transform translate-x-4': flipVertical}"></div>
+              </div>
+              <span class="ml-2 text-white text-sm">Flip V</span>
+            </label>
+          </div>
+        </div>
+      </div>
+      <!-- END ROTATION & FLIP CONTROLS -->
 
       <div class="mb-4">
         <strong class="text-white">Annotations</strong>
@@ -188,6 +244,31 @@
           <!-- CSV specification information -->
           <div class="mb-2 text-white text-xs">
             <p>CSV Format: Header row with columns 'x', 'y', and 'label' (or 'description')</p>
+          </div>
+          <!-- Overlay scaling controls -->
+          <div class="flex space-x-2 mb-2">
+            <div class="flex-1">
+              <label class="text-white text-xs block">X factor</label>
+              <input
+                type="number"
+                step="0.01"
+                v-model.number="overlayScaleX"
+                @change="applyOverlayScale"
+                class="block w-full mt-1 pl-2 pr-2 py-1 text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md"
+                placeholder="1"
+              />
+            </div>
+            <div class="flex-1">
+              <label class="text-white text-xs block">Y factor</label>
+              <input
+                type="number"
+                step="0.01"
+                v-model.number="overlayScaleY"
+                @change="applyOverlayScale"
+                class="block w-full mt-1 pl-2 pr-2 py-1 text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md"
+                placeholder="1"
+              />
+            </div>
           </div>
           
           <div class="flex items-center space-x-2 mb-2">
@@ -239,28 +320,22 @@
           </div>
         </div>
       </div>
-    <!-- </div> -->
   </div>
 </div>
 <!-- END NAVIGATION -->
 </div>
 </template>
-
 <script>
 import OpenSeadragon from "openseadragon";
 import { mapGetters, mapActions, mapState, mapMutations } from "vuex";
-
-import { BeakerIcon, MinusCircleIcon, PlusCircleIcon, ArchiveBoxIcon, 
+import { BeakerIcon, MinusCircleIcon, PlusCircleIcon, 
   XCircleIcon, ShareIcon } from '@heroicons/vue/24/solid'
-
 import LogSlider from "../components/LogSlider.vue";
-
 export default {
   components: {
     BeakerIcon, 
     MinusCircleIcon,
     PlusCircleIcon,
-    ArchiveBoxIcon,
     XCircleIcon,
     ShareIcon,
     LogSlider,
@@ -274,15 +349,21 @@ export default {
       overlayFiles: [],
       selectedOverlayFile: "",
       mouseTrackerInitialized: false,
-      maxVisiblePoints: 250,         // Maximum number of points to display at once
-      currentPointOverlays: [],      // Currently displayed point overlays
-      allPointOverlays: [],          // All point overlays from the CSV
-      viewportUpdateTimeout: null,   // For debouncing viewport changes
-      showPointOverlays: true,       // Toggle for showing/hiding point overlays
+      maxVisiblePoints: 250,
+      currentPointOverlays: [],
+      allPointOverlays: [],
+      viewportUpdateTimeout: null,
+      showPointOverlays: true,
       newFolderName: "",
       selectedFolder: "",
       selectedSampleFolderDropdown: "",
       copySettingsFromSample: "",
+      overlayScaleX: 1,
+      overlayScaleY: 1,
+      // Transform controls
+      rotationAngle: 0,
+      flipHorizontal: false,
+      flipVertical: false,
     }
   },
   computed: {
@@ -292,7 +373,6 @@ export default {
       "saveEnabled", "activatedStains", "activatedSample", "location", "selectedSampleAltName", 
       "selectedSampleFolder"]),
       folders() {
-        // Collect unique folders from all samples
         const folderSet = new Set();
         this.samples.forEach(sample => {
           if (
@@ -303,39 +383,36 @@ export default {
             folderSet.add(sample.details.folder);
           }
         });
-        // Convert set to array of { name, key }
         const foldersList = Array.from(folderSet).map(folder => ({
           name: folder,
           key: folder
         }));
-
-        // Always put "Any" at the top
         return [...foldersList];
       },
       foldersWithAny() {
         return [{ name: '-', key: '' }, ...this.folders];
       },
       filteredSamples() {
-        // If "Any" ('') is selected, return all samples; otherwise, filter by folder
+        let filtered = [];
         if (!this.selectedFolder) {
-          return this.samples;
+          filtered = this.samples;
+        } else {
+          filtered = this.samples.filter(
+            sample => sample.details && sample.details.folder === this.selectedFolder
+          );
         }
-        return this.samples.filter(
-          sample => sample.details && sample.details.folder === this.selectedFolder
-        );
+        return filtered.sort((a, b) => {
+          const nameA = (a.details && a.details.altName) ? a.details.altName : a.name;
+          const nameB = (b.details && b.details.altName) ? b.details.altName : b.name;
+          return nameA.localeCompare(nameB);
+        });
       },
       activeOverlayLegend() {
-        // If no overlay file is selected, return null
         if (!this.selectedOverlayFile) return null;
-        
-        // Find the selected overlay file
         const overlay = this.overlayFiles.find(o => o.id === this.selectedOverlayFile);
         if (!overlay) return null;
-        
-        // Return the color map from the selected overlay file
         return overlay.colorMap;
       },
-
       hasActiveChannels() {
         return this.activatedSampleLocal.filter(sample => (sample.stain !== "empty" && sample.activated)).length > 0;
       },
@@ -411,7 +488,6 @@ export default {
         this.SET_STATE_PROPERTY({ property: "addStainFile", value: value });
       },
     },
-
     selectedSampleNameLocal: {
       get() {
         return this.selectedSampleName;
@@ -450,16 +526,15 @@ export default {
       this.loadSampleSheet();
     },
     selectedSampleNameLocal: function () {
+      this.resetTransform();
       this.loadSample();
     },
     currentSlideLocal: function (newValue, oldValue) {
       console.log("changed current slide to: ", newValue);
-
       this.viewer.open(newValue);
       for (let i = 0; i < this.overlaysLocal.length; i++) {
         this.addOverlay(this.overlaysLocal[i].location.x, this.overlaysLocal[i].location.y, this.overlaysLocal[i].number, this.overlaysLocal[i].description);
       }
-
     }, 
     overlaysLocal: function(newValue, oldValue) {
       console.log("overlays changed");
@@ -467,7 +542,7 @@ export default {
     },
   },
   methods: {
-    ...mapActions(["loadSampleSheet", "loadSample", "reloadSlide", "saveDetails", "addStain", "removeStain", "deleteOverlay", "copySettings"]),
+    ...mapActions(["loadSampleSheet", "loadSample", "reloadSlide", "saveDetails", "saveChannels", "addStain", "removeStain", "deleteOverlay", "copySettings"]),
     ...mapMutations(["SET_STATE_PROPERTY"]),
     copyLinkToClipboard() {
       const baseUrl = `${window.location.origin}${window.location.pathname}`;
@@ -492,47 +567,76 @@ export default {
       this.viewer = new OpenSeadragon({
         id: "view",
         prefixUrl: "images/",
-        timeout: 120000, //120000
-        animationTime: 1, //0.5
-        blendTime: 0.5, //0.1
+        timeout: 120000,
+        animationTime: 1,
+        blendTime: 0.5,
         showRotationControl: true,
         constrainDuringPan: true,
-        maxZoomPixelRatio: 3, //2
+        maxZoomPixelRatio: 3,
         minZoomImageRatio: 1,
         visibilityRatio: 1,
         zoomPerScroll: 2,
         showNavigationControl: true,
         navigationControlAnchor: OpenSeadragon.ControlAnchor.TOP_LEFT,
+        imageLoaderLimit: 2,
+        immediateRender: false,
+        placeholderFillStyle: '#000',
       });
-
+      // start speedup
+      let scrollTimeout = null;
+      let wasPaused = false;
+      const pauseLoading = () => {
+        if (!wasPaused && this.viewer.world.getItemCount() > 0) {
+          for (let i = 0; i < this.viewer.world.getItemCount(); i++) {
+            this.viewer.world.getItemAt(i).setPreload(false);
+          }
+          wasPaused = true;
+        }
+      };
+      const resumeLoading = () => {
+        if (wasPaused && this.viewer.world.getItemCount() > 0) {
+          for (let i = 0; i < this.viewer.world.getItemCount(); i++) {
+            this.viewer.world.getItemAt(i).setPreload(true);
+          }
+          wasPaused = false;
+          this.viewer.forceRedraw();
+        }
+      };
+      this.viewer.addHandler('canvas-scroll', () => {
+        pauseLoading();
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(resumeLoading, 400);
+      });
+      this.viewer.addHandler('canvas-drag', () => {
+        pauseLoading();
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(resumeLoading, 400);
+      });
+      this.viewer.addHandler('canvas-drag-end', () => {
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(resumeLoading, 200);
+      });
+      // end speedup
       // Add handlers for viewport changes to update point overlays
       this.viewer.addHandler('animation', () => {
-        // Use debouncing to prevent too frequent updates during continuous operations
         clearTimeout(this.viewportUpdateTimeout);
         this.viewportUpdateTimeout = setTimeout(() => {
           if (this.allPointOverlays && this.allPointOverlays.length) {
             this.updateVisiblePoints();
           }
-        }, 200); // 200ms debounce
+        }, 200);
       });
-
       this.viewer.addHandler('tile-drawn', () => {
         if (!this.mouseTrackerInitialized) {
           this.mouseTrackerInitialized = true;
-
           this.$nextTick(() => {
-
             new OpenSeadragon.MouseTracker({
               element: this.viewer.canvas,
               contextMenuHandler: e => {
                 e.originalEvent.preventDefault();
                 const clickPosition = e.position;
-
-                // Convert the click position to image coordinates
                 const imageCoordinates = this.viewer.viewport.viewerElementToImageCoordinates(clickPosition);
-
                 const elementCoordiantes = this.viewer.viewport.imageToViewportCoordinates(imageCoordinates);
-
                 this.overlaysLocal.push({
                   location: {
                     x: elementCoordiantes.x,
@@ -541,85 +645,112 @@ export default {
                   description: "",
                   number: this.overlaysLocal.length > 0 ? this.overlaysLocal.map(overlay => overlay.number).sort((a, b) => a - b)[this.overlaysLocal.length - 1] + 1 : 1
                 });
-
                 console.log(this.overlaysLocal);
-
-                //Add overlay, disabled for now
                 this.addOverlay(elementCoordiantes.x, elementCoordiantes.y, this.overlaysLocal[this.overlaysLocal.length - 1].number, this.overlaysLocal[this.overlaysLocal.length - 1].description);
               },
             });
           });
         }
       });
-
       this.viewer.addHandler('open', () => {
         this.setBounds();
       });
-
+      // Sync rotation angle when OSD built-in rotation control is used
+      this.viewer.addHandler('rotate', (event) => {
+        this.rotationAngle = parseFloat((this.viewer.viewport.getRotation() % 360).toFixed(1));
+        if (this.rotationAngle < 0) this.rotationAngle += 360;
+      });
     },
-
     reloadOverlays() {
       this.viewer.clearOverlays();
       for (let i = 0; i < this.overlaysLocal.length; i++) {
         this.addOverlay(this.overlaysLocal[i].location.x, this.overlaysLocal[i].location.y, this.overlaysLocal[i].number, this.overlaysLocal[i].description);
       }
     },
-
     settingsChanged() {
       console.log("settings changed");
       this.getBounds();
       this.reloadSlide();
     },
-
     setBounds() {
       if (this.viewportBoundsLocal) {
         console.log("setting viewport to: ", this.viewportBoundsLocal);
         this.viewer.viewport.fitBounds(this.viewportBoundsLocal, true);
       }
     },
-
     getBounds() {
       this.viewportBoundsLocal = this.viewer.viewport.getBounds();
-
       console.log("viewport bounds: ", this.viewportBoundsLocal);
     },
-
+    // --- ROTATION & FLIP METHODS ---
+    applyRotation() {
+      if (!this.viewer) return;
+      const angle = parseFloat(this.rotationAngle) || 0;
+      this.viewer.viewport.setRotation(angle);
+    },
+    rotateBy(degrees) {
+      if (!this.viewer) return;
+      this.rotationAngle = parseFloat(((this.rotationAngle + degrees) % 360).toFixed(1));
+      if (this.rotationAngle < 0) this.rotationAngle += 360;
+      this.viewer.viewport.setRotation(this.rotationAngle);
+    },
+    applyFlip() {
+      if (!this.viewer) return;
+      // OpenSeadragon has built-in setFlip for horizontal flip
+      this.viewer.viewport.setFlip(this.flipHorizontal);
+      
+      // Vertical flip = horizontal flip + 180° rotation
+      // We combine the user's desired rotation with vertical flip
+      if (this.flipVertical) {
+        // To achieve vertical flip: flip horizontally + rotate 180°
+        // But we need to keep user's rotation in mind
+        const effectiveRotation = (this.rotationAngle + 180) % 360;
+        this.viewer.viewport.setFlip(!this.flipHorizontal);
+        this.viewer.viewport.setRotation(effectiveRotation);
+      } else {
+        this.viewer.viewport.setFlip(this.flipHorizontal);
+        this.viewer.viewport.setRotation(this.rotationAngle);
+      }
+    },
+    resetTransform() {
+      this.rotationAngle = 0;
+      this.flipHorizontal = false;
+      this.flipVertical = false;
+      if (this.viewer) {
+        this.viewer.viewport.setRotation(0);
+        this.viewer.viewport.setFlip(false);
+      }
+    },
+    // --- END ROTATION & FLIP METHODS ---
     addOverlay(x, y, number, text = "") {
       const overlayElement = document.createElement("div");
       overlayElement.className = "overlay-" + number;
-
       const displayText = text || number;
-
       overlayElement.style.cssText = "display: flex; align-items: center; color: white;";
       overlayElement.innerHTML = `
         <span style="font-size: 1em; background-color: rgba(0, 0, 0, 0.5); padding: 4px; border-radius: 4px;">${displayText}</span>
         <span style="font-size: 2em; margin-left: 4px;">&rarr;</span>
       `;
-
       this.viewer.addOverlay({
         element: overlayElement,
         location: new OpenSeadragon.Point(x, y),
         placement: OpenSeadragon.Placement.RIGHT
       });
-
       new OpenSeadragon.MouseTracker({
         element: overlayElement,
         clickHandler: (event) => {
           event.originalEvent.preventDefault();
           console.log(event);
           console.log('Overlay clicked');
-          // Add your custom logic for handling the click event on the overlay here
         },
       }).setTracking(true);
     },
-
     handleFileUpload(event) {
       const file = event.target.files[0];
       if (!file) return;
       
       this.selectedFile = file;
       
-      // Parse the CSV file
       const reader = new FileReader();
       reader.onload = (e) => {
         try {
@@ -635,11 +766,9 @@ export default {
     },
     
     processCSV(csvContent, fileName) {
-      // Simple CSV parsing
       const lines = csvContent.split('\n');
       const headers = lines[0].split(',');
       
-      // Expected headers: x, y, description (optional)
       const xIndex = headers.findIndex(h => h.toLowerCase().trim() === 'x');
       const yIndex = headers.findIndex(h => h.toLowerCase().trim() === 'y');
       const labelIndex = headers.findIndex(h => h.toLowerCase().trim() === 'label' || h.toLowerCase().trim() === 'description');
@@ -649,56 +778,56 @@ export default {
         return;
       }
       
-      // Collect all unique labels and assign colors
       const uniqueLabels = new Set();
       for (let i = 1; i < lines.length; i++) {
-        if (!lines[i].trim()) continue; // Skip empty lines
+        if (!lines[i].trim()) continue;
         const values = lines[i].split(',');
         if (labelIndex !== -1 && values[labelIndex]) {
           uniqueLabels.add(values[labelIndex].trim());
         }
       }
       
-      // Generate a color map for each unique label
       const colorMap = this.generateColorMap(Array.from(uniqueLabels));
       
       const pointOverlays = [];
       
-      // First pass to check coordinate scale
-      let needsNormalization = false;
-      
+      let maxX = 0, maxY = 0;
       for (let i = 1; i < lines.length; i++) {
-        if (!lines[i].trim()) continue; // Skip empty lines
-        
+        if (!lines[i].trim()) continue;
         const values = lines[i].split(',');
         const x = parseFloat(values[xIndex]);
         const y = parseFloat(values[yIndex]);
-        
         if (!isNaN(x) && !isNaN(y)) {
-          // If we find coordinates > 1, they're likely in actual image coordinates
-          if (x > 1 || y > 1) {
-            needsNormalization = true;
-            break;
-          }
+          maxX = Math.max(maxX, x);
+          maxY = Math.max(maxY, y);
         }
       }
       
-      // Get image dimensions if available and needed
+      console.log(`Coordinate ranges - X: 0-${maxX}, Y: 0-${maxY}`);
+      
+      const isNormalized = maxX <= 1 && maxY <= 1;
+      console.log(`Coordinates are ${isNormalized ? 'already normalized' : 'in pixel space'}`);
+      
       let imageWidth = 1, imageHeight = 1;
-      if (needsNormalization) {
+      if (!isNormalized) {
         if (!this.viewer || this.viewer.world.getItemCount() === 0) {
-          alert("Cannot normalize coordinates: No image is currently loaded. Please load an image first.");
+          alert("Cannot normalize coordinates: No image is currently loaded.");
           return;
         }
-        
         imageWidth = this.viewer.world.getItemAt(0).source.dimensions.x;
-        imageHeight = this.viewer.world.getItemAt(0).source.dimensions.y; 
-        console.log(`Normalizing coordinates using image dimensions: ${imageWidth}x${imageHeight}`);
+        imageHeight = this.viewer.world.getItemAt(0).source.dimensions.y;
+        console.log(`Normalizing using image dimensions: ${imageWidth}x${imageHeight}`);
       }
       
-      // Skip header row, process data rows
+      let aspectRatio = 1;
+      if (this.viewer && this.viewer.world.getItemCount() > 0) {
+        const tiledImage = this.viewer.world.getItemAt(0);
+        aspectRatio = tiledImage.source.dimensions.x / tiledImage.source.dimensions.y;
+        console.log(`Image aspect ratio: ${aspectRatio}`);
+      }
+      
       for (let i = 1; i < lines.length; i++) {
-        if (!lines[i].trim()) continue; // Skip empty lines
+        if (!lines[i].trim()) continue;
         
         const values = lines[i].split(',');
         let x = parseFloat(values[xIndex]);
@@ -706,24 +835,30 @@ export default {
         const label = labelIndex !== -1 ? values[labelIndex].trim() : `Point ${i}`;
         
         if (!isNaN(x) && !isNaN(y)) {
-          // Normalize coordinates if needed
-          if (needsNormalization) {
+          if (!isNormalized) {
             x = x / imageWidth;
             y = y / imageHeight;
           }
           
+          const osdX = x;
+          const osdY = y / aspectRatio;
+          
           pointOverlays.push({
             location: {
-              x: x,
-              y: y
+              x: osdX,
+              y: osdY
             },
             description: label,
-            color: colorMap[label] || '#FF0000', // Default to red if no color found
+            color: colorMap[label] || '#FF0000',
           });
         }
       }
       
-      // Add to overlay files list
+      console.log(`Processed ${pointOverlays.length} points`);
+      if (pointOverlays.length > 0) {
+        console.log(`First point: (${pointOverlays[0].location.x}, ${pointOverlays[0].location.y})`);
+      }
+      
       const newOverlayFile = {
         id: Date.now().toString(),
         name: fileName,
@@ -739,38 +874,43 @@ export default {
     loadSelectedOverlay() {
       if (!this.selectedOverlayFile) return;
       
-      // Find the selected overlay file
       const overlay = this.overlayFiles.find(o => o.id === this.selectedOverlayFile);
       if (!overlay) return;
       
-      // Display the point overlays without modifying the main overlay list
       this.displayPointOverlays(overlay.data);
     },
-
+    applyOverlayScale() {
+      const overlay = this.overlayFiles.find(o => o.id === this.selectedOverlayFile);
+      if (!overlay) {
+        return;
+      }
+      this.displayPointOverlays(overlay.data);
+    },
     displayPointOverlays(points) {
-      // Store all point overlays for filtering later
-      this.allPointOverlays = points;
+      const scaleX = Number.isFinite(this.overlayScaleX) ? this.overlayScaleX : 1;
+      const scaleY = Number.isFinite(this.overlayScaleY) ? this.overlayScaleY : 1;
+      this.allPointOverlays = points.map(point => ({
+        ...point,
+        location: {
+          x: point.location.x * scaleX,
+          y: point.location.y * scaleY,
+        },
+      }));
       
-      // Clear any existing point overlays first
       this.clearPointOverlays();
-      
-      // Update based on current viewport
       this.updateVisiblePoints();
     },
     
     updateVisiblePoints() {
-      // Clear existing overlays
       this.clearPointOverlays();
       
       if (!this.allPointOverlays || !this.allPointOverlays.length || !this.viewer || !this.showPointOverlays) {
         return;
       }
       
-      // Get current viewport information
       const viewportBounds = this.viewer.viewport.getBounds();
       const zoom = this.viewer.viewport.getZoom();
       
-      // Filter points to only those in the current viewport
       const pointsInViewport = this.allPointOverlays.filter(point => {
         return (
           point.location.x >= viewportBounds.x && 
@@ -780,7 +920,6 @@ export default {
         );
       });
       
-      // If there are too many points, sample them
       let pointsToShow = pointsInViewport;
       if (pointsInViewport.length > this.maxVisiblePoints) {
         const step = Math.floor(pointsInViewport.length / this.maxVisiblePoints);
@@ -788,7 +927,6 @@ export default {
         console.log(`Sampling overlay points: showing ${pointsToShow.length} out of ${pointsInViewport.length} in viewport`);
       }
       
-      // Add the visible overlays
       this.currentPointOverlays = [];
       for (let i = 0; i < pointsToShow.length; i++) {
         const point = pointsToShow[i];
@@ -803,9 +941,7 @@ export default {
       
       console.log(`Displaying ${pointsToShow.length} points out of ${this.allPointOverlays.length} total points`);
     },
-
     clearPointOverlays() {
-      // Clear all overlays that have the point-overlay class
       const overlays = document.querySelectorAll('.point-overlay');
       overlays.forEach(overlay => {
         if (overlay.parentElement) {
@@ -818,7 +954,6 @@ export default {
       const overlayElement = document.createElement("div");
       overlayElement.className = "point-overlay";
       
-      // Create a dot with the assigned color
       overlayElement.style.cssText = "display: flex; align-items: center;";
       overlayElement.innerHTML = `
         <div style="
@@ -839,14 +974,11 @@ export default {
           display: none;
         ">${label}</span>
       `;
-
       this.viewer.addOverlay({
         element: overlayElement,
         location: new OpenSeadragon.Point(x, y),
         placement: OpenSeadragon.Placement.CENTER
       });
-
-      // Add hover effect to show label text
       overlayElement.addEventListener("mouseenter", () => {
         overlayElement.querySelector("span").style.display = "inline";
       });
@@ -855,11 +987,9 @@ export default {
         overlayElement.querySelector("span").style.display = "none";
       });
     },
-
     generateColorMap(labels) {
       const colorMap = {};
       
-      // Predefined vivid colors for better visibility
       const colors = [
         '#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF', '#00FFFF',
         '#FF8000', '#8000FF', '#0080FF', '#FF0080', '#80FF00', '#00FF80',
@@ -874,7 +1004,6 @@ export default {
       
       return colorMap;
     },
-
     togglePointOverlays() {
       this.updateVisiblePoints();
     },
@@ -884,8 +1013,6 @@ export default {
     this.loadOpenSeaDragon();
     this.locationLocal = this.$route.query.location ? this.$route.query.location : "public";
     this.loadSampleSheet(this.$route.query.sample);
-
-    // trigger reload of overlays when changing pages
     if(this.currentSlideLocal) {
       this.viewer.open(this.currentSlideLocal);
       for (let i = 0; i < this.overlaysLocal.length; i++) {
@@ -895,7 +1022,6 @@ export default {
   },
 }
 </script>
-
 <style>
 div#view {
   flex: 1;
@@ -905,34 +1031,30 @@ div#view {
   height: 100vh;
   width: 100vw;
 }
-
 .icon {
     width: 24px;
     height: 24px;
     color: #d8d8d8;
 }
-
 #hud {
   z-index: 1000;
 }
-
 #minimized-menu {
   z-index: 1000;
   position: fixed;
-  top: 10vh;
+  top: 1vh;
   right: 1vw;
   width: 5vw;
   max-height: 10vh;
   overflow-y: auto;
 }
-
 #navigation-menu {
   z-index: 1000;
   position: fixed;
-  top: 10vh;
+  top: 1vh;
   right: 1vw;
   width: 25vw;
-  max-height: 90vh;
+  max-height: 98vh;
   overflow-y: auto;
 }
 </style>
