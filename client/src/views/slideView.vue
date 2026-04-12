@@ -118,9 +118,11 @@
                   <option v-for="option in colorOptions" :value="option">{{ option }}</option>
                 </select>
                 <input type="checkbox" v-model="channel.activated" @change="settingsChanged">
-                <log-slider
-                  :initial-gain="channel.gain"
-                  v-model:gain="channel.gain"
+                <channel-histogram
+                  :channel-number="channel.channel_number"
+                  :channel-color="channel.stain"
+                  v-model:low="channel.low"
+                  v-model:high="channel.high"
                   @change="settingsChanged"
                   class="flex-grow"
                 />
@@ -330,7 +332,7 @@ import OpenSeadragon from "openseadragon";
 import { mapGetters, mapActions, mapState, mapMutations } from "vuex";
 import { BeakerIcon, MinusCircleIcon, PlusCircleIcon, 
   XCircleIcon, ShareIcon } from '@heroicons/vue/24/solid'
-import LogSlider from "../components/LogSlider.vue";
+import ChannelHistogram from "../components/ChannelHistogram.vue";
 export default {
   components: {
     BeakerIcon, 
@@ -338,7 +340,7 @@ export default {
     PlusCircleIcon,
     XCircleIcon,
     ShareIcon,
-    LogSlider,
+    ChannelHistogram,
   },
   data() {
     return {
