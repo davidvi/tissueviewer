@@ -13,7 +13,7 @@
   <div v-if="activatedSampleLocal && activatedSampleLocal.length > 1">
     <h3 class="text-lg font-semibold mb-2">Stains</h3>
     <div v-for="channel in activatedSampleLocal" :key="channel.channel_name" class="mb-2">
-      <div v-if="channel.stain != 'empty'">
+      <div v-if="channel.stain != 'empty' && channel.activated">
         <div class="flex items-center space-x-2">
           <div class="w-4 h-4 rounded-full" :style="{ backgroundColor: channel.stain }"></div>
           <p>{{ channel.channel_name }}</p>
