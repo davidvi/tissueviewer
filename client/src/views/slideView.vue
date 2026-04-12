@@ -247,31 +247,6 @@
           <div class="mb-2 text-white text-xs">
             <p>CSV Format: Header row with columns 'x', 'y', and 'label' (or 'description')</p>
           </div>
-          <!-- Overlay scaling controls -->
-          <div class="flex space-x-2 mb-2">
-            <div class="flex-1">
-              <label class="text-white text-xs block">X factor</label>
-              <input
-                type="number"
-                step="0.01"
-                v-model.number="overlayScaleX"
-                @change="applyOverlayScale"
-                class="block w-full mt-1 pl-2 pr-2 py-1 text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md"
-                placeholder="1"
-              />
-            </div>
-            <div class="flex-1">
-              <label class="text-white text-xs block">Y factor</label>
-              <input
-                type="number"
-                step="0.01"
-                v-model.number="overlayScaleY"
-                @change="applyOverlayScale"
-                class="block w-full mt-1 pl-2 pr-2 py-1 text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md"
-                placeholder="1"
-              />
-            </div>
-          </div>
           
           <div class="flex items-center space-x-2 mb-2">
             <input
@@ -319,6 +294,42 @@
                 </div>
               </label>
             </div>
+
+            <!-- Max visible points control -->
+            <div class="mt-2">
+              <label class="text-white text-xs block">Max points</label>
+              <input
+                type="number"
+                min="1"
+                v-model.number="maxVisiblePoints"
+                @change="updateVisiblePoints"
+                class="block w-full mt-1 pl-2 pr-2 py-1 text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md"
+                placeholder="250"
+              />
+            </div>
+
+            <!-- Category visibility toggles -->
+            <div v-if="activeOverlayCategories && activeOverlayCategories.length > 0" class="mt-3">
+              <label class="text-white text-xs block mb-1">Categories</label>
+              <div
+                v-for="{ label, color } in activeOverlayCategories"
+                :key="label"
+                class="flex items-center justify-between mb-1 cursor-pointer select-none"
+                @click="toggleOverlayCategory(label)"
+              >
+                <div class="flex items-center space-x-2">
+                  <div class="w-3 h-3 rounded-full flex-shrink-0" :style="{ backgroundColor: color }"></div>
+                  <span class="text-white text-xs truncate">{{ label }}</span>
+                </div>
+                <div class="relative ml-2 flex-shrink-0">
+                  <div class="block w-8 h-4 rounded-full" :class="disabledOverlayCategories.includes(label) ? 'bg-gray-500' : 'bg-blue-500'"></div>
+                  <div
+                    class="dot absolute top-0.5 w-3 h-3 bg-white rounded-full transition"
+                    :class="disabledOverlayCategories.includes(label) ? 'left-0.5' : 'left-4'"
+                  ></div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -356,12 +367,11 @@ export default {
       allPointOverlays: [],
       viewportUpdateTimeout: null,
       showPointOverlays: true,
+      disabledOverlayCategories: [],
       newFolderName: "",
       selectedFolder: "",
       selectedSampleFolderDropdown: "",
       copySettingsFromSample: "",
-      overlayScaleX: 1,
-      overlayScaleY: 1,
       // Transform controls
       rotationAngle: 0,
       flipHorizontal: false,
@@ -409,11 +419,23 @@ export default {
           return nameA.localeCompare(nameB);
         });
       },
+      activeOverlayCategories() {
+        if (!this.selectedOverlayFile) return [];
+        const overlay = this.overlayFiles.find(o => o.id === this.selectedOverlayFile);
+        if (!overlay) return [];
+        return Object.entries(overlay.colorMap).map(([label, color]) => ({ label, color }));
+      },
       activeOverlayLegend() {
         if (!this.selectedOverlayFile) return null;
         const overlay = this.overlayFiles.find(o => o.id === this.selectedOverlayFile);
         if (!overlay) return null;
-        return overlay.colorMap;
+        const filtered = {};
+        for (const [label, color] of Object.entries(overlay.colorMap)) {
+          if (!this.disabledOverlayCategories.includes(label)) {
+            filtered[label] = color;
+          }
+        }
+        return Object.keys(filtered).length > 0 ? filtered : null;
       },
       hasActiveChannels() {
         return this.activatedSampleLocal.filter(sample => (sample.stain !== "empty" && sample.activated)).length > 0;
@@ -881,24 +903,9 @@ export default {
       
       this.displayPointOverlays(overlay.data);
     },
-    applyOverlayScale() {
-      const overlay = this.overlayFiles.find(o => o.id === this.selectedOverlayFile);
-      if (!overlay) {
-        return;
-      }
-      this.displayPointOverlays(overlay.data);
-    },
     displayPointOverlays(points) {
-      const scaleX = Number.isFinite(this.overlayScaleX) ? this.overlayScaleX : 1;
-      const scaleY = Number.isFinite(this.overlayScaleY) ? this.overlayScaleY : 1;
-      this.allPointOverlays = points.map(point => ({
-        ...point,
-        location: {
-          x: point.location.x * scaleX,
-          y: point.location.y * scaleY,
-        },
-      }));
-      
+      this.disabledOverlayCategories = [];
+      this.allPointOverlays = points.map(point => ({ ...point }));
       this.clearPointOverlays();
       this.updateVisiblePoints();
     },
@@ -914,12 +921,14 @@ export default {
       const zoom = this.viewer.viewport.getZoom();
       
       const pointsInViewport = this.allPointOverlays.filter(point => {
-        return (
+        const inViewport = (
           point.location.x >= viewportBounds.x && 
           point.location.x <= viewportBounds.x + viewportBounds.width &&
           point.location.y >= viewportBounds.y && 
           point.location.y <= viewportBounds.y + viewportBounds.height
         );
+        const categoryEnabled = !this.disabledOverlayCategories.includes(point.description);
+        return inViewport && categoryEnabled;
       });
       
       let pointsToShow = pointsInViewport;
@@ -1007,6 +1016,15 @@ export default {
       return colorMap;
     },
     togglePointOverlays() {
+      this.updateVisiblePoints();
+    },
+    toggleOverlayCategory(label) {
+      const idx = this.disabledOverlayCategories.indexOf(label);
+      if (idx === -1) {
+        this.disabledOverlayCategories.push(label);
+      } else {
+        this.disabledOverlayCategories.splice(idx, 1);
+      }
       this.updateVisiblePoints();
     },
   },
