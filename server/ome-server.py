@@ -179,25 +179,32 @@ class OmeTiffPyramid:
             return patch
         return cv2.resize(patch, target, interpolation=cv2.INTER_AREA)
 
-    def _normalize(self, patch: np.ndarray) -> np.ndarray:
+    def _normalize(self, patch: np.ndarray, min_val: float = 0.0, max_val: float = 1.0) -> np.ndarray:
         patch = patch.astype(np.float32)
         if self.dtype_max > 0:
             patch = patch / self.dtype_max
+        span = max_val - min_val
+        if span > 0:
+            patch = (patch - min_val) / span
         patch = np.clip(patch, 0.0, 1.0)
         return patch
 
-    def _compose_rgb(self, patches: List[np.ndarray], colors: List[str], gains: List[float], is_rgb: bool) -> np.ndarray:
+    def _compose_rgb(self, patches: List[np.ndarray], colors: List[str], gains: List[float], is_rgb: bool, mins: List[float] = None, maxs: List[float] = None) -> np.ndarray:
         h, w = patches[0].shape[-2:]
         rgb = np.zeros((h, w, 3), dtype=np.float32)
+        if mins is None:
+            mins = [0.0] * len(patches)
+        if maxs is None:
+            maxs = [1.0] * len(patches)
 
         if is_rgb and len(patches) >= 3:
             # Treat first three channels as RGB (order: R, G, B)
             for i, channel_patch in enumerate(patches[:3]):
-                patch = self._normalize(channel_patch)
+                patch = self._normalize(channel_patch, mins[i], maxs[i])
                 rgb[:, :, 2 - i] += patch * gains[i]  # convert RGB -> BGR order
         else:
-            for patch, color_name, gain in zip(patches, colors, gains):
-                patch_norm = self._normalize(patch)
+            for patch, color_name, gain, min_val, max_val in zip(patches, colors, gains, mins, maxs):
+                patch_norm = self._normalize(patch, min_val, max_val)
                 b, g, r = get_color(color_name)
                 # Swap R and B because COLOR_MAP is actually RGB despite comment
                 rgb[:, :, 0] += patch_norm * (r / 255.0) * gain  # R value -> B channel
@@ -207,7 +214,7 @@ class OmeTiffPyramid:
         rgb = np.clip(rgb * 255.0, 0, 255).astype(np.uint8)
         return rgb
 
-    def get_tile(self, level: int, tile_x: int, tile_y: int, channels: List[int], colors: List[str], gains: List[float], is_rgb: bool) -> np.ndarray:
+    def get_tile(self, level: int, tile_x: int, tile_y: int, channels: List[int], colors: List[str], gains: List[float], is_rgb: bool, mins: List[float] = None, maxs: List[float] = None) -> np.ndarray:
         if level < 0 or level > self.max_level:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid level")
 
@@ -253,13 +260,21 @@ class OmeTiffPyramid:
         if not patches:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No channels selected")
 
-        # Extend color/gain lists if they are shorter than channels
+        # Extend color/gain/min/max lists if they are shorter than channels
         if len(colors) < len(patches):
             colors = (colors + ["white"] * len(patches))[: len(patches)]
         if len(gains) < len(patches):
             gains = (gains + [1.0] * len(patches))[: len(patches)]
+        if mins is None:
+            mins = [0.0] * len(patches)
+        if maxs is None:
+            maxs = [1.0] * len(patches)
+        if len(mins) < len(patches):
+            mins = (mins + [0.0] * len(patches))[: len(patches)]
+        if len(maxs) < len(patches):
+            maxs = (maxs + [1.0] * len(patches))[: len(patches)]
 
-        return self._compose_rgb(patches, colors, gains, is_rgb)
+        return self._compose_rgb(patches, colors, gains, is_rgb, mins, maxs)
 
 
 class TiffCache:
@@ -552,6 +567,57 @@ async def samples(location: str = Query("public", description="Location to searc
 
     buf = {"samples": file_json, "save": settings.SAVE, "colors": settings.COLORS}
     return JSONResponse(content=buf, status_code=200)
+
+
+@app.get("/{location}/{chs}/{rgb}/{colors}/{gains}/{mins}/{maxs}/{file}.dzi")
+async def get_dzi_windowed(
+    location: str,
+    chs: str,
+    rgb: str,
+    colors: str,
+    gains: str,
+    mins: str,
+    maxs: str,
+    file: str,
+):
+    return await get_dzi(location, chs, rgb, colors, gains, file)
+
+
+@app.get("/{location}/{chs}/{rgb}/{colors}/{gains}/{mins}/{maxs}/{file}_files/{level}/{loc_x}_{loc_y}.jpeg")
+async def get_tile_windowed(
+    location: str,
+    chs: str,
+    rgb: bool,
+    colors: str,
+    gains: str,
+    mins: str,
+    maxs: str,
+    file: str,
+    level: int,
+    loc_x: int,
+    loc_y: int,
+):
+    path_to_tiff = os.path.join(settings.SLIDE_DIR, location, f"{file}.ome.tiff")
+    if not os.path.exists(path_to_tiff):
+        path_to_tiff = os.path.join(settings.SLIDE_DIR, location, f"{file}.ome.tif")
+    if not os.path.exists(path_to_tiff):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="OME-TIFF not found")
+
+    pyramid = tile_cache.get(path_to_tiff)
+
+    channels = [int(x) for x in chs.split(";") if x != ""]
+    colors_list = [c for c in colors.split(";") if c != ""]
+    gains_list = [float(x) for x in gains.split(";") if x != ""]
+    mins_list = [float(x) for x in mins.split(";") if x != ""]
+    maxs_list = [float(x) for x in maxs.split(";") if x != ""]
+
+    tile = pyramid.get_tile(level, loc_x, loc_y, channels, colors_list, gains_list, rgb, mins_list, maxs_list)
+
+    tile_rgb = cv2.cvtColor(tile, cv2.COLOR_BGR2RGB)
+    img_bytes = cv2.imencode(".jpeg", tile_rgb)[1].tobytes()
+    img_io = BytesIO(img_bytes)
+
+    return Response(content=img_io.getvalue(), media_type="image/jpeg")
 
 
 @app.get("/{location}/{chs}/{rgb}/{colors}/{gains}/{file}.dzi")
