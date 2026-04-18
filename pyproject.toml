@@ -1,0 +1,78 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tissueviewer"
+version = "0.2.0"
+description = "Standalone multi-channel OME-TIFF viewer with a built-in web UI."
+readme = "README.md"
+license = { file = "LICENSE.md" }
+requires-python = ">=3.10"
+authors = [{ name = "David van IJzendoorn" }]
+keywords = [
+    "ome-tiff",
+    "microscopy",
+    "multiplex",
+    "deepzoom",
+    "viewer",
+    "openseadragon",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Framework :: FastAPI",
+    "Intended Audience :: Science/Research",
+    "License :: Other/Proprietary License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Topic :: Scientific/Engineering :: Image Processing",
+]
+dependencies = [
+    "fastapi>=0.110,<1.0",
+    "uvicorn[standard]>=0.29",
+    "tifffile>=2023.2.28",
+    "imagecodecs>=2024.1",
+    "zarr>=2.15,<4",
+    "numpy>=1.24,<3",
+    "opencv-python-headless>=4.7",
+    "PyYAML>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "pytest-asyncio>=0.23",
+    "httpx>=0.27",
+    "build>=1.2",
+    "ruff>=0.4",
+]
+
+[project.scripts]
+tissueviewer = "tissueviewer.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/davidvi/tissueviewer"
+Issues = "https://github.com/davidvi/tissueviewer/issues"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+tissueviewer = [
+    "web/index.html",
+    "web/favicon.ico",
+    "web/assets/*",
+    "web/images/*",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"

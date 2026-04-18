@@ -27,3 +27,16 @@ npm run dev
 ```sh
 npm run build
 ```
+
+### Ship the build inside the Python wheel
+
+After `npm run build`, sync the output into the Python package so the wheel
+picks it up:
+
+```sh
+cd ..
+python scripts/sync_client.py
+```
+
+Then commit the updated `src/tissueviewer/web/` directory. See
+`../CONTRIBUTING.md` for the full release flow.

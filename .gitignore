@@ -25,6 +25,13 @@ share/python-wheels/
 *.egg
 MANIFEST
 
+# Keep the pre-built Vue client that ships inside the wheel. `dist/` is
+# otherwise ignored above for top-level wheel builds.
+!client/dist/
+!client/dist/**
+!src/tissueviewer/web/
+!src/tissueviewer/web/**
+
 # PyInstaller
 #  Usually these files are written by a python script from a template
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
