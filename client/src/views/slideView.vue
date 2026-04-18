@@ -8,8 +8,19 @@
 <div id="view" class="w-full h-full relative">
   <div v-if="!hasActiveChannels" id="viewEmpty" class="absolute inset-0 bg-black z-10"></div>
 </div>
+<!-- HUD MINIMIZED -->
+<div id="hud-minimized" v-if="hudMinimal && (activatedSampleLocal && activatedSampleLocal.length > 1 || activeOverlayLegend)">
+  <button class="p-2" @click="hudMinimal = false">
+    <plus-circle-icon class="icon" />
+  </button>
+</div>
 <!-- HUD -->
-<div id="hud" class="fixed bottom-5 left-5 max-w-60 max-h-60 overflow-y-auto bg-black bg-opacity-70 p-2 rounded-md text-white" v-if="activatedSampleLocal && activatedSampleLocal.length > 1 || activeOverlayLegend">
+<div id="hud" class="fixed bottom-5 left-5 max-w-60 max-h-60 overflow-y-auto bg-black bg-opacity-70 p-2 rounded-md text-white" v-if="!hudMinimal && (activatedSampleLocal && activatedSampleLocal.length > 1 || activeOverlayLegend)">
+  <div class="flex justify-end mb-1">
+    <button class="p-1" @click="hudMinimal = true">
+      <minus-circle-icon class="icon" />
+    </button>
+  </div>
   <div v-if="activatedSampleLocal && activatedSampleLocal.length > 1">
     <h3 class="text-lg font-semibold mb-2">Stains</h3>
     <div v-for="channel in activatedSampleLocal" :key="channel.channel_name" class="mb-2">
@@ -310,7 +321,15 @@
 
             <!-- Category visibility toggles -->
             <div v-if="activeOverlayCategories && activeOverlayCategories.length > 0" class="mt-3">
-              <label class="text-white text-xs block mb-1">Categories</label>
+              <div class="flex items-center justify-between mb-1">
+                <label class="text-white text-xs">Categories</label>
+                <button
+                  class="px-2 py-0.5 text-xs rounded bg-gray-500 hover:bg-gray-400 text-white"
+                  @click="toggleAllOverlayCategories"
+                >
+                  {{ disabledOverlayCategories.length === 0 ? 'Disable all' : 'Enable all' }}
+                </button>
+              </div>
               <div
                 v-for="{ label, color } in activeOverlayCategories"
                 :key="label"
@@ -357,6 +376,7 @@ export default {
     return {
       viewer: null,
       windowMinimal: false,
+      hudMinimal: false,
       locations: [{ name: "Public", key: "public"}],
       selectedFile: null,
       overlayFiles: [],
@@ -1027,6 +1047,14 @@ export default {
       }
       this.updateVisiblePoints();
     },
+    toggleAllOverlayCategories() {
+      if (this.disabledOverlayCategories.length === 0) {
+        this.disabledOverlayCategories = this.activeOverlayCategories.map(c => c.label);
+      } else {
+        this.disabledOverlayCategories = [];
+      }
+      this.updateVisiblePoints();
+    },
   },
   mounted() {
     console.log("mounted");
@@ -1058,6 +1086,14 @@ div#view {
 }
 #hud {
   z-index: 1000;
+}
+#hud-minimized {
+  z-index: 1000;
+  position: fixed;
+  bottom: 5px;
+  left: 20px;
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 0.375rem;
 }
 #minimized-menu {
   z-index: 1000;
