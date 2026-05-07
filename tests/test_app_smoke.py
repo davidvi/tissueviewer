@@ -91,3 +91,66 @@ def test_histogram(client):
     body = resp.json()
     assert "bins" in body
     assert len(body["bins"]) == 64
+
+
+# ---------------------------------------------------------------------------
+# HTTP Basic auth
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def auth_client(tiny_ome_tiff: Path):
+    config = Config(
+        single_file=tiny_ome_tiff,
+        data_dir=tiny_ome_tiff.parent,
+        save_enabled=True,
+        auth_username="alice",
+        auth_password="hunter2",
+    )
+    app = create_app(config)
+    with TestClient(app) as c:
+        yield c
+
+
+def test_auth_blocks_unauthenticated_root(auth_client):
+    resp = auth_client.get("/")
+    assert resp.status_code == 401
+    assert resp.headers["www-authenticate"].lower().startswith("basic")
+
+
+def test_auth_blocks_unauthenticated_static(auth_client):
+    # Static assets should also be gated.
+    resp = auth_client.get("/favicon.ico")
+    assert resp.status_code == 401
+
+
+def test_auth_blocks_unauthenticated_api(auth_client):
+    resp = auth_client.get("/samples.json?location=public")
+    assert resp.status_code == 401
+
+
+def test_auth_rejects_wrong_password(auth_client):
+    resp = auth_client.get("/", auth=("alice", "wrong"))
+    assert resp.status_code == 401
+
+
+def test_auth_rejects_wrong_user(auth_client):
+    resp = auth_client.get("/", auth=("eve", "hunter2"))
+    assert resp.status_code == 401
+
+
+def test_auth_rejects_malformed_header(auth_client):
+    resp = auth_client.get("/", headers={"Authorization": "Basic not-base64!!"})
+    assert resp.status_code == 401
+
+
+def test_auth_accepts_correct_credentials(auth_client):
+    resp = auth_client.get("/", auth=("alice", "hunter2"))
+    assert resp.status_code == 200
+    assert '<div id="app">' in resp.text
+
+
+def test_auth_off_when_unconfigured(client):
+    # The default ``client`` fixture has no auth set; root should be public.
+    resp = client.get("/")
+    assert resp.status_code == 200

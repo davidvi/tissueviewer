@@ -15,6 +15,7 @@ Point it at a file or a folder and open your browser.
 - [Command-line reference](#command-line-reference)
 - [Environment variables](#environment-variables)
 - [Configuration file](#configuration-file)
+- [Authentication](#authentication)
 - [Filename conventions](#filename-conventions)
 - [Programmatic use](#programmatic-use)
 - [Troubleshooting](#troubleshooting)
@@ -105,6 +106,8 @@ options:
       --validate        Verify every OME-TIFF, then exit.
       --no-save         Disable writing .sample.json sidecars.
       --log-level LEVEL DEBUG | INFO | WARNING | ERROR  (default INFO).
+      --auth-username U Username for HTTP Basic auth (pair with --auth-password).
+      --auth-password P Password for HTTP Basic auth (pair with --auth-username).
   -V, --version         Show version and exit.
   -h, --help            Show help and exit.
 ```
@@ -123,6 +126,8 @@ values take precedence.
 | `TV_PORT`      | Default listen port.                                |
 | `TV_SAVE`      | `false`/`0`/`no` disables sample.json writes.       |
 | `TV_LOG_LEVEL` | Default log level.                                  |
+| `TV_AUTH_USERNAME` | Username for HTTP Basic auth (see [Authentication](#authentication)). |
+| `TV_AUTH_PASSWORD` | Password for HTTP Basic auth.                  |
 
 ## Configuration file
 
@@ -138,6 +143,9 @@ colors:
   - red
   - green
   - blue
+auth:
+  username: alice
+  password: hunter2
 ```
 
 ```bash
@@ -146,6 +154,45 @@ tissueviewer --config config.yaml
 
 Precedence (highest wins): CLI flags → environment variables → YAML →
 built-in defaults.
+
+## Authentication
+
+For public deployments, TissueViewer can require a single username /
+password via HTTP Basic auth. The browser shows its native login dialog
+on first visit and remembers the credentials for the rest of the
+session.
+
+Enable it by supplying both a username and a password through any of
+the supported sources (precedence: CLI > env > YAML):
+
+```bash
+# Env vars — recommended; keeps secrets out of shell history and `ps`.
+export TV_AUTH_USERNAME=alice
+export TV_AUTH_PASSWORD=hunter2
+tissueviewer /path/to/slides
+
+# CLI flags — convenient for quick tests.
+tissueviewer /path/to/slides --auth-username alice --auth-password hunter2
+
+# YAML — see the auth: block in the example above.
+tissueviewer --config config.yaml
+```
+
+When enabled, every endpoint is gated: the Vue UI, static assets,
+samples / histogram / save APIs, DZI manifests, and tile images.
+Setting only one of the username/password is rejected at startup.
+
+**Security notes**
+
+- Basic auth sends credentials base64-encoded (not encrypted) on every
+  request. Always put TissueViewer behind HTTPS in public deployments
+  (e.g. via nginx, Caddy, or a cloud load balancer).
+- There is no logout flow other than closing the browser. If you need
+  per-user accounts, session cookies, SSO, or rate limiting, terminate
+  auth at a reverse proxy (e.g. `oauth2-proxy`, Cloudflare Access) and
+  leave TissueViewer's auth disabled.
+- If credentials are committed to a YAML file, restrict its permissions
+  (`chmod 600 config.yaml`).
 
 ## Filename conventions
 

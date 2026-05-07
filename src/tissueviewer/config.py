@@ -48,6 +48,8 @@ class Config:
     colors: list[str] = field(default_factory=lambda: list(DEFAULT_COLORS))
     tile_cache_size: int = 4
     log_level: str = "INFO"
+    auth_username: Optional[str] = None
+    auth_password: Optional[str] = None
 
     # ------------------------------------------------------------------
     # Construction helpers
@@ -73,6 +75,8 @@ class Config:
             "watch",
             "tile_cache_size",
             "log_level",
+            "auth_username",
+            "auth_password",
         ):
             if name in data and data[name] is not None:
                 kwargs[name] = data[name]
@@ -83,6 +87,13 @@ class Config:
             kwargs["single_file"] = Path(data["single_file"]).expanduser()
         if "colors" in data and data["colors"] is not None:
             kwargs["colors"] = list(data["colors"])
+
+        auth_block = data.get("auth")
+        if isinstance(auth_block, Mapping):
+            if auth_block.get("username") is not None:
+                kwargs["auth_username"] = str(auth_block["username"])
+            if auth_block.get("password") is not None:
+                kwargs["auth_password"] = str(auth_block["password"])
 
         # Coerce bools that may come in as strings from YAML.
         for bool_key in ("save_enabled", "recursive", "open_browser", "watch"):
@@ -110,6 +121,11 @@ class Config:
             env_map["save_enabled"] = _to_bool(os.environ["TV_SAVE"])
         if os.getenv("TV_LOG_LEVEL"):
             env_map["log_level"] = os.environ["TV_LOG_LEVEL"]
+        if os.getenv("TV_AUTH_USERNAME"):
+            env_map["auth_username"] = os.environ["TV_AUTH_USERNAME"]
+        if os.getenv("TV_AUTH_PASSWORD") is not None:
+            # Allow empty string here so users can intentionally clear it.
+            env_map["auth_password"] = os.environ["TV_AUTH_PASSWORD"]
         return cls._from_mapping(env_map)
 
     @classmethod
@@ -146,6 +162,8 @@ class Config:
                 "open_browser",
                 "watch",
                 "log_level",
+                "auth_username",
+                "auth_password",
             ):
                 val = getattr(cli_args, attr, None)
                 if val is not None:
@@ -164,6 +182,13 @@ class Config:
                 cfg = replace(cfg, data_dir=target, single_file=None)
 
         return cfg
+
+    # ------------------------------------------------------------------
+    # Derived properties
+    # ------------------------------------------------------------------
+    @property
+    def auth_enabled(self) -> bool:
+        return self.auth_username is not None and self.auth_password is not None
 
     # ------------------------------------------------------------------
     # Validation
@@ -191,6 +216,14 @@ class Config:
 
         if not (0 < self.port < 65536):
             raise ValueError(f"Invalid port: {self.port}")
+
+        if (self.auth_username is None) != (self.auth_password is None):
+            raise ValueError(
+                "auth_username and auth_password must be set together "
+                "(or both left unset to disable authentication)."
+            )
+        if self.auth_username is not None and self.auth_username == "":
+            raise ValueError("auth_username must not be empty.")
 
 
 def _merge(base: Config, overlay: Config) -> Config:

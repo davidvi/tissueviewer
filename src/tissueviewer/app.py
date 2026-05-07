@@ -7,6 +7,7 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from .auth import make_basic_auth_middleware
 from .config import Config
 from .discovery import AppState, build_location_map
 from .formats.ome_tiff import TiffCache
@@ -53,6 +54,15 @@ def create_app(config: Config) -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    if config.auth_enabled:
+        # Registering through the decorator API runs auth before any route
+        # is dispatched, so static assets, tiles, and APIs are all gated.
+        assert config.auth_username is not None and config.auth_password is not None
+        app.middleware("http")(
+            make_basic_auth_middleware(config.auth_username, config.auth_password)
+        )
+        logger.info("HTTP Basic auth enabled (user=%r)", config.auth_username)
 
     register_routes(app, state)
     return app

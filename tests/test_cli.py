@@ -56,6 +56,21 @@ def test_parser_recognizes_core_flags():
     assert ns.log_level == "DEBUG"
 
 
+def test_parser_recognizes_auth_flags():
+    parser = build_parser()
+    ns = parser.parse_args(
+        [
+            "/tmp/whatever",
+            "--auth-username",
+            "alice",
+            "--auth-password",
+            "hunter2",
+        ]
+    )
+    assert ns.auth_username == "alice"
+    assert ns.auth_password == "hunter2"
+
+
 def test_validate_flag_runs(monkeypatch, data_dir, capsys):
     # ``--validate`` must run without starting the server and exit 0 here.
     rc = main([str(data_dir), "--recursive", "--validate"])
