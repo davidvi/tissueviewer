@@ -93,6 +93,29 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Logging verbosity (default INFO).",
     )
     parser.add_argument(
+        "--auth-username",
+        dest="auth_username",
+        default=None,
+        metavar="USER",
+        help=(
+            "Enable HTTP Basic auth with this username. Must be paired with "
+            "--auth-password. For public deployments, prefer the "
+            "TV_AUTH_USERNAME/TV_AUTH_PASSWORD env vars to keep credentials "
+            "out of shell history."
+        ),
+    )
+    parser.add_argument(
+        "--auth-password",
+        dest="auth_password",
+        default=None,
+        metavar="PASS",
+        help=(
+            "Password for HTTP Basic auth. Must be paired with --auth-username. "
+            "Note: this value is visible in shell history and `ps`; prefer "
+            "TV_AUTH_PASSWORD or a YAML config file with restricted permissions."
+        ),
+    )
+    parser.add_argument(
         "-V",
         "--version",
         action="version",
