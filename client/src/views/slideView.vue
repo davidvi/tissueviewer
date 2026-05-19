@@ -678,6 +678,8 @@ export default {
               element: this.viewer.canvas,
               contextMenuHandler: e => {
                 e.originalEvent.preventDefault();
+                // We use OSD's native setFlip, so OSD's coordinate conversions
+                // already account for the visible position correctly.
                 const clickPosition = e.position;
                 const imageCoordinates = this.viewer.viewport.viewerElementToImageCoordinates(clickPosition);
                 const elementCoordiantes = this.viewer.viewport.imageToViewportCoordinates(imageCoordinates);
@@ -699,10 +701,30 @@ export default {
       this.viewer.addHandler('open', () => {
         this.setBounds();
       });
-      // Sync rotation angle when OSD built-in rotation control is used
-      this.viewer.addHandler('rotate', (event) => {
-        this.rotationAngle = parseFloat((this.viewer.viewport.getRotation() % 360).toFixed(1));
-        if (this.rotationAngle < 0) this.rotationAngle += 360;
+      // Sync rotation angle when OSD built-in rotation control is used.
+      // Overlay positions are handled by their per-overlay onDraw callbacks,
+      // which OSD invokes every viewport update — no manual re-rendering
+      // needed. The CSV-points visible-region filter does need to re-run on
+      // rotation so the viewport-bounds check picks up the new region.
+      this.viewer.addHandler('rotate', () => {
+        const osdRot = ((this.viewer.viewport.getRotation() % 360) + 360) % 360;
+        // Undo the +180° offset used to simulate vertical flip.
+        const userAngle = this.flipVertical
+          ? ((osdRot - 180) % 360 + 360) % 360
+          : osdRot;
+        this.rotationAngle = parseFloat(userAngle.toFixed(1));
+        if (typeof this.updateVisiblePoints === 'function') {
+          this.updateVisiblePoints();
+        }
+      });
+      // Re-render the visible CSV-point overlays after a flip so the
+      // viewport-bounds filter in updateVisiblePoints picks up the freshly
+      // visible region. (Arrow overlays don't need re-rendering — their
+      // onDraw callback already tracks the current flip/rotation state.)
+      this.viewer.addHandler('flip', () => {
+        if (typeof this.updateVisiblePoints === 'function') {
+          this.updateVisiblePoints();
+        }
       });
     },
     reloadOverlays() {
@@ -727,43 +749,112 @@ export default {
       console.log("viewport bounds: ", this.viewportBoundsLocal);
     },
     // --- ROTATION & FLIP METHODS ---
+    // We use OSD's native viewport.setFlip (which handles pointer events,
+    // panning, and zoom correctly). OSD's tile drawer mirrors the IMAGE for
+    // setFlip, but HTML overlays go through pixelFromPoint which is unaware
+    // of flip. To keep HTML overlays aligned with the image at every viewport
+    // state (pan/zoom/rotate), we provide an onDraw callback on each overlay
+    // that positions the element directly based on the stored canonical
+    // user-coordinate.
     applyRotation() {
-      if (!this.viewer) return;
-      const angle = parseFloat(this.rotationAngle) || 0;
-      this.viewer.viewport.setRotation(angle);
+      this._pushTransform();
     },
     rotateBy(degrees) {
       if (!this.viewer) return;
       this.rotationAngle = parseFloat(((this.rotationAngle + degrees) % 360).toFixed(1));
       if (this.rotationAngle < 0) this.rotationAngle += 360;
-      this.viewer.viewport.setRotation(this.rotationAngle);
+      this._pushTransform();
     },
     applyFlip() {
+      this._pushTransform();
+    },
+    _pushTransform() {
       if (!this.viewer) return;
-      // OpenSeadragon has built-in setFlip for horizontal flip
-      this.viewer.viewport.setFlip(this.flipHorizontal);
-      
-      // Vertical flip = horizontal flip + 180° rotation
-      // We combine the user's desired rotation with vertical flip
+      // Clear any leftover CSS transform from previous attempts.
+      if (this.viewer.canvas && this.viewer.canvas.style.transform) {
+        this.viewer.canvas.style.transform = '';
+      }
+      const userAngle = parseFloat(this.rotationAngle) || 0;
+      // Vertical flip is simulated as horizontal flip + 180° rotation.
       if (this.flipVertical) {
-        // To achieve vertical flip: flip horizontally + rotate 180°
-        // But we need to keep user's rotation in mind
-        const effectiveRotation = (this.rotationAngle + 180) % 360;
+        const effectiveRotation = (userAngle + 180) % 360;
         this.viewer.viewport.setFlip(!this.flipHorizontal);
         this.viewer.viewport.setRotation(effectiveRotation);
       } else {
         this.viewer.viewport.setFlip(this.flipHorizontal);
-        this.viewer.viewport.setRotation(this.rotationAngle);
+        this.viewer.viewport.setRotation(userAngle);
       }
+    },
+    // Compute the CSS-pixel position (relative to viewer.canvas) where the
+    // image renders the given user-coord (x, y). Used by overlay onDraw
+    // callbacks so HTML overlays exactly track the image under any flip +
+    // rotation + pan + zoom state.
+    //
+    // OSD's tile drawer applies, in canvas-pixel space around canvas center:
+    //   - When flipped:    rotate(-R) + scale(-1, 1)
+    //   - When not flipped: rotate(+R)
+    // Equivalently, in viewport space around viewport.getCenter() (since
+    // pixelFromPointNoRotate is a uniform-scale linear map and the viewport
+    // center maps to the canvas center):
+    //   - flipped:    screen(P) = pixelFromPointNoRotate( rotate_-R( mirror_x( P - vpCenter ) ) + vpCenter )
+    //   - not flipped: screen(P) = pixelFromPointNoRotate( rotate_+R( P - vpCenter ) + vpCenter )
+    _imageScreenPos(x, y) {
+      const vp = this.viewer.viewport;
+      const vpCenter = vp.getCenter(true);
+      const R = vp.getRotation();
+      const flipped = vp.getFlip();
+      let dx = x - vpCenter.x;
+      let dy = y - vpCenter.y;
+      if (flipped) dx = -dx;
+      // When flipped the image is rendered with rotate(-R); without flip,
+      // rotate(+R). Match that here.
+      const rotDeg = flipped ? -R : R;
+      const ang = rotDeg * Math.PI / 180;
+      const cos = Math.cos(ang);
+      const sin = Math.sin(ang);
+      const rx = cos * dx - sin * dy + vpCenter.x;
+      const ry = sin * dx + cos * dy + vpCenter.y;
+      return vp.pixelFromPointNoRotate(new OpenSeadragon.Point(rx, ry), true);
+    },
+    // Build an onDraw callback that positions the overlay element at the
+    // image's current screen pixel for the given canonical (un-flipped)
+    // user-coord. Honors the overlay's placement so the existing offset
+    // semantics (RIGHT, CENTER, …) still apply.
+    _makeFlipAwareOnDraw(x, y, placement) {
+      const placementValue = placement;
+      return (position, size, element) => {
+        const pos = this._imageScreenPos(x, y);
+        // Apply placement offset. OSD's placement values: CENTER=0, TOP=1,
+        // TOP_RIGHT=2, RIGHT=3, BOTTOM_RIGHT=4, BOTTOM=5, BOTTOM_LEFT=6,
+        // LEFT=7, TOP_LEFT=8. Default RIGHT means the anchor is on the
+        // element's left edge vertically centered, so the element extends
+        // to the right of the anchor.
+        let offsetX = 0;
+        let offsetY = 0;
+        const P = OpenSeadragon.Placement;
+        switch (placementValue) {
+          case P.CENTER:        offsetX = -size.x / 2; offsetY = -size.y / 2; break;
+          case P.TOP:           offsetX = -size.x / 2; offsetY = 0; break;
+          case P.TOP_RIGHT:     offsetX = -size.x;     offsetY = 0; break;
+          case P.RIGHT:         offsetX = 0;           offsetY = -size.y / 2; break;
+          case P.BOTTOM_RIGHT:  offsetX = -size.x;     offsetY = -size.y; break;
+          case P.BOTTOM:        offsetX = -size.x / 2; offsetY = -size.y; break;
+          case P.BOTTOM_LEFT:   offsetX = 0;           offsetY = -size.y; break;
+          case P.LEFT:          offsetX = -size.x;     offsetY = -size.y / 2; break;
+          case P.TOP_LEFT:      offsetX = 0;           offsetY = 0; break;
+          default:              offsetX = 0;           offsetY = -size.y / 2; break;
+        }
+        element.style.position = 'absolute';
+        element.style.left = (pos.x + offsetX) + 'px';
+        element.style.top = (pos.y + offsetY) + 'px';
+        element.style.display = 'block';
+      };
     },
     resetTransform() {
       this.rotationAngle = 0;
       this.flipHorizontal = false;
       this.flipVertical = false;
-      if (this.viewer) {
-        this.viewer.viewport.setRotation(0);
-        this.viewer.viewport.setFlip(false);
-      }
+      this._pushTransform();
     },
     // --- END ROTATION & FLIP METHODS ---
     addOverlay(x, y, number, text = "") {
@@ -778,7 +869,10 @@ export default {
       this.viewer.addOverlay({
         element: overlayElement,
         location: new OpenSeadragon.Point(x, y),
-        placement: OpenSeadragon.Placement.RIGHT
+        placement: OpenSeadragon.Placement.RIGHT,
+        // Position the overlay every frame to track the image under any
+        // flip + rotation + pan + zoom state.
+        onDraw: this._makeFlipAwareOnDraw(x, y, OpenSeadragon.Placement.RIGHT)
       });
       new OpenSeadragon.MouseTracker({
         element: overlayElement,
@@ -937,18 +1031,30 @@ export default {
         return;
       }
       
-      const viewportBounds = this.viewer.viewport.getBounds();
-      const zoom = this.viewer.viewport.getZoom();
+      // Determine the visible CSS-pixel rectangle of the viewer canvas.
+      // We test each point by computing where the image actually renders it
+      // on screen (_imageScreenPos handles flip + rotation + pan + zoom)
+      // and keeping the ones that land within the visible region. This is
+      // robust against rotation/flip because getBounds() returns a viewport
+      // AABB in canonical coordinates that no longer matches the visible
+      // region once a rotation is applied.
+      const canvasEl = this.viewer.canvas;
+      const W = canvasEl ? canvasEl.clientWidth : 0;
+      const H = canvasEl ? canvasEl.clientHeight : 0;
+      // Add a small margin so points just outside the visible edge are kept
+      // (avoids popping when panning right at the edge).
+      const margin = 32;
       
       const pointsInViewport = this.allPointOverlays.filter(point => {
-        const inViewport = (
-          point.location.x >= viewportBounds.x && 
-          point.location.x <= viewportBounds.x + viewportBounds.width &&
-          point.location.y >= viewportBounds.y && 
-          point.location.y <= viewportBounds.y + viewportBounds.height
-        );
         const categoryEnabled = !this.disabledOverlayCategories.includes(point.description);
-        return inViewport && categoryEnabled;
+        if (!categoryEnabled) return false;
+        const pos = this._imageScreenPos(point.location.x, point.location.y);
+        return (
+          pos.x >= -margin &&
+          pos.x <= W + margin &&
+          pos.y >= -margin &&
+          pos.y <= H + margin
+        );
       });
       
       let pointsToShow = pointsInViewport;
@@ -1008,7 +1114,8 @@ export default {
       this.viewer.addOverlay({
         element: overlayElement,
         location: new OpenSeadragon.Point(x, y),
-        placement: OpenSeadragon.Placement.CENTER
+        placement: OpenSeadragon.Placement.CENTER,
+        onDraw: this._makeFlipAwareOnDraw(x, y, OpenSeadragon.Placement.CENTER)
       });
       overlayElement.addEventListener("mouseenter", () => {
         overlayElement.querySelector("span").style.display = "inline";
