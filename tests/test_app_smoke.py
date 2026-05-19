@@ -91,3 +91,35 @@ def test_histogram(client):
     body = resp.json()
     assert "bins" in body
     assert len(body["bins"]) == 64
+
+
+def test_save_and_load_transform_settings(client, tiny_ome_tiff: Path):
+    """The transform settings (rotation + flips) round-trip through the sidecar.
+
+    The save endpoint accepts arbitrary JSON, and /samples.json returns the whole
+    sidecar under `details`. This locks the client/server contract for the new
+    `transform` field.
+    """
+    payload = {
+        "channelsSetting": [],
+        "description": "",
+        "overlays": [],
+        "altName": "sample",
+        "folder": "",
+        "transform": {
+            "rotationAngle": 42.5,
+            "flipHorizontal": True,
+            "flipVertical": False,
+        },
+    }
+    resp = client.post("/save/public/sample", json=payload)
+    assert resp.status_code == 200
+
+    resp = client.get("/samples.json?location=public")
+    assert resp.status_code == 200
+    sample = next(s for s in resp.json()["samples"] if s["name"] == "sample")
+    assert sample["details"]["transform"] == {
+        "rotationAngle": 42.5,
+        "flipHorizontal": True,
+        "flipVertical": False,
+    }

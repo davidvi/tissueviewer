@@ -25,7 +25,12 @@ const store = createStore({
             userProfile: null,
             location: "public",
             activatedSample: [],
-            currentSampleIsRGB: false, 
+            currentSampleIsRGB: false,
+
+            // transform settings (rotation + flips applied to the OSD viewport)
+            rotationAngle: 0,
+            flipHorizontal: false,
+            flipVertical: false,
 
             // upload variables
             file: null,

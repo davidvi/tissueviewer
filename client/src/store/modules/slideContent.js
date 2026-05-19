@@ -50,6 +50,11 @@ export const saveDetails = async ({ state, commit }) => {
     overlays: state.overlays,
     altName: state.selectedSampleAltName,
     folder: state.selectedSampleFolder,
+    transform: {
+      rotationAngle: state.rotationAngle,
+      flipHorizontal: state.flipHorizontal,
+      flipVertical: state.flipVertical,
+    },
   }
 
   const location = state.location == "public" ? "public" : (state.userProfile && state.userProfile.uid ? state.userProfile.uid : "noid");
@@ -83,6 +88,11 @@ export const saveChannels = async ({ state, commit }) => {
     overlays: selectedSampleBuf.details.overlays || state.overlays,
     altName: selectedSampleBuf.details.altName || state.selectedSampleAltName,
     folder: selectedSampleBuf.details.folder || "", // Preserve existing folder
+    transform: selectedSampleBuf.details.transform || {
+      rotationAngle: state.rotationAngle,
+      flipHorizontal: state.flipHorizontal,
+      flipVertical: state.flipVertical,
+    },
   }
 
   const location = state.location == "public" ? "public" : (state.userProfile && state.userProfile.uid ? state.userProfile.uid : "noid");
@@ -95,6 +105,41 @@ export const saveChannels = async ({ state, commit }) => {
   commit('SET_STATE_PROPERTY', { property: "samples", value: bufSamples });
 
   console.log("saving channels: ", data);
+
+  axios.post(`${baseUrl}/save/${location}/${state.selectedSample.name}`, data)
+    .then(response => {
+      console.log(response);
+    })
+}
+
+/**
+ * Saves only the transform settings (rotation + flips), preserving other details.
+ * @param {Object} context - Vuex context object.
+ */
+export const saveTransform = async ({ state, commit }) => {
+  let selectedSampleBuf = state.samples.filter(s => s.name === state.selectedSample.name)[0];
+
+  let data = {
+    channelsSetting: selectedSampleBuf.details.channelsSetting || state.activatedSample,
+    description: selectedSampleBuf.details.description || state.description,
+    overlays: selectedSampleBuf.details.overlays || state.overlays,
+    altName: selectedSampleBuf.details.altName || state.selectedSampleAltName,
+    folder: selectedSampleBuf.details.folder || "",
+    transform: {
+      rotationAngle: state.rotationAngle,
+      flipHorizontal: state.flipHorizontal,
+      flipVertical: state.flipVertical,
+    },
+  }
+
+  const location = state.location == "public" ? "public" : (state.userProfile && state.userProfile.uid ? state.userProfile.uid : "noid");
+
+  let bufSamples = state.samples;
+  bufSamples.filter(s => s.name === state.selectedSample.name)[0].details = data;
+
+  commit('SET_STATE_PROPERTY', { property: "samples", value: bufSamples });
+
+  console.log("saving transform: ", data.transform);
 
   axios.post(`${baseUrl}/save/${location}/${state.selectedSample.name}`, data)
     .then(response => {
@@ -222,5 +267,12 @@ export const loadSample = async ({ state, commit, dispatch }) => {
   commit('SET_STATE_PROPERTY', { property: "description", value: selectedSampleBuf.details.description ? selectedSampleBuf.details.description : "" });
   commit('SET_STATE_PROPERTY', { property: "selectedSampleAltName", value: selectedSampleBuf.details.altName ? selectedSampleBuf.details.altName : selectedSampleBuf.name });
   commit('SET_STATE_PROPERTY', { property: "overlays", value: selectedSampleBuf.details.overlays ? selectedSampleBuf.details.overlays : [] });
+
+  // Hydrate transform settings (rotation + flips), defaulting to identity when absent.
+  const transform = selectedSampleBuf.details.transform || {};
+  commit('SET_STATE_PROPERTY', { property: "rotationAngle", value: typeof transform.rotationAngle === "number" ? transform.rotationAngle : 0 });
+  commit('SET_STATE_PROPERTY', { property: "flipHorizontal", value: !!transform.flipHorizontal });
+  commit('SET_STATE_PROPERTY', { property: "flipVertical", value: !!transform.flipVertical });
+
   dispatch('reloadSlide');
 }

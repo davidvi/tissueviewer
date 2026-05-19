@@ -229,6 +229,15 @@
               <span class="ml-2 text-white text-sm">Flip V</span>
             </label>
           </div>
+          <!-- Save transform -->
+          <button
+            v-if="saveEnabled"
+            class="mt-3 p-2 bg-blue-600 hover:bg-blue-700 text-white rounded"
+            @click="saveTransform"
+            title="Persist the current rotation and flip settings for this slide"
+          >
+            Save transform
+          </button>
         </div>
       </div>
       <!-- END ROTATION & FLIP CONTROLS -->
@@ -392,10 +401,6 @@ export default {
       selectedFolder: "",
       selectedSampleFolderDropdown: "",
       copySettingsFromSample: "",
-      // Transform controls
-      rotationAngle: 0,
-      flipHorizontal: false,
-      flipVertical: false,
     }
   },
   computed: {
@@ -564,13 +569,39 @@ export default {
         this.SET_STATE_PROPERTY({ property: "currentSlide", value: value });
       },
     },
+    rotationAngle: {
+      get() {
+        return this.$store.state.rotationAngle;
+      },
+      set(value) {
+        this.SET_STATE_PROPERTY({ property: "rotationAngle", value: value });
+      },
+    },
+    flipHorizontal: {
+      get() {
+        return this.$store.state.flipHorizontal;
+      },
+      set(value) {
+        this.SET_STATE_PROPERTY({ property: "flipHorizontal", value: value });
+      },
+    },
+    flipVertical: {
+      get() {
+        return this.$store.state.flipVertical;
+      },
+      set(value) {
+        this.SET_STATE_PROPERTY({ property: "flipVertical", value: value });
+      },
+    },
   },
   watch: {
     locationLocal: function () {
       this.loadSampleSheet();
     },
     selectedSampleNameLocal: function () {
-      this.resetTransform();
+      // Don't reset locally: loadSample() will hydrate rotationAngle / flipHorizontal /
+      // flipVertical from the slide's saved details (defaulting to identity when absent).
+      // The actual OSD viewport transform is re-applied in the OSD 'open' handler.
       this.loadSample();
     },
     currentSlideLocal: function (newValue, oldValue) {
@@ -586,7 +617,7 @@ export default {
     },
   },
   methods: {
-    ...mapActions(["loadSampleSheet", "loadSample", "reloadSlide", "saveDetails", "saveChannels", "addStain", "removeStain", "deleteOverlay", "copySettings"]),
+    ...mapActions(["loadSampleSheet", "loadSample", "reloadSlide", "saveDetails", "saveChannels", "saveTransform", "addStain", "removeStain", "deleteOverlay", "copySettings"]),
     ...mapMutations(["SET_STATE_PROPERTY"]),
     copyLinkToClipboard() {
       const baseUrl = `${window.location.origin}${window.location.pathname}`;
@@ -700,6 +731,10 @@ export default {
       });
       this.viewer.addHandler('open', () => {
         this.setBounds();
+        // Re-apply saved rotation + flip state after the new image opens.
+        // (OSD resets viewport rotation/flip on open, so we must push our
+        // values back in.)
+        this._pushTransform();
       });
       // Sync rotation angle when OSD built-in rotation control is used.
       // Overlay positions are handled by their per-overlay onDraw callbacks,
