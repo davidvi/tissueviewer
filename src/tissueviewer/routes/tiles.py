@@ -13,8 +13,8 @@ Registration order matters — the windowed variants must come first.
 
 from __future__ import annotations
 
+import asyncio
 import logging
-from io import BytesIO
 
 import cv2
 from fastapi import FastAPI, HTTPException, status
@@ -142,11 +142,43 @@ async def _dzi(state: AppState, location: str, file: str) -> Response:
             status_code=status.HTTP_404_NOT_FOUND, detail="OME-TIFF not found"
         )
 
-    pyramid = state.tile_cache.get(str(path))
-    dzi_content = pyramid.dzi_xml()
+    pyramid = await asyncio.to_thread(state.tile_cache.get, str(path))
+    dzi_content = await asyncio.to_thread(pyramid.dzi_xml)
     return Response(
         content=dzi_content, media_type="application/xml", status_code=200
     )
+
+
+def _render_tile_jpeg(
+    pyramid,
+    *,
+    level: int,
+    loc_x: int,
+    loc_y: int,
+    channels: list[int],
+    colors_list: list[str],
+    gains_list: list[float],
+    rgb: bool,
+    mins,
+    maxs,
+) -> bytes:
+    """Synchronous tile render + JPEG encode. Runs in a worker thread."""
+    tile = pyramid.get_tile(
+        level,
+        loc_x,
+        loc_y,
+        channels,
+        colors_list,
+        gains_list,
+        rgb,
+        mins,
+        maxs,
+    )
+    tile_rgb = cv2.cvtColor(tile, cv2.COLOR_BGR2RGB)
+    ok, buf = cv2.imencode(".jpeg", tile_rgb)
+    if not ok:
+        raise RuntimeError("cv2.imencode failed to encode tile as JPEG")
+    return buf.tobytes()
 
 
 async def _tile(
@@ -170,28 +202,26 @@ async def _tile(
             status_code=status.HTTP_404_NOT_FOUND, detail="OME-TIFF not found"
         )
 
-    pyramid = state.tile_cache.get(str(path))
+    pyramid = await asyncio.to_thread(state.tile_cache.get, str(path))
 
     channels = _split_ints(chs)
     colors_list = _split_strs(colors)
     gains_list = _split_floats(gains)
 
-    tile = pyramid.get_tile(
-        level,
-        loc_x,
-        loc_y,
-        channels,
-        colors_list,
-        gains_list,
-        rgb,
-        mins,
-        maxs,
+    img_bytes = await asyncio.to_thread(
+        _render_tile_jpeg,
+        pyramid,
+        level=level,
+        loc_x=loc_x,
+        loc_y=loc_y,
+        channels=channels,
+        colors_list=colors_list,
+        gains_list=gains_list,
+        rgb=rgb,
+        mins=mins,
+        maxs=maxs,
     )
-
-    tile_rgb = cv2.cvtColor(tile, cv2.COLOR_BGR2RGB)
-    img_bytes = cv2.imencode(".jpeg", tile_rgb)[1].tobytes()
-    img_io = BytesIO(img_bytes)
-    return Response(content=img_io.getvalue(), media_type="image/jpeg")
+    return Response(content=img_bytes, media_type="image/jpeg")
 
 
 __all__ = ["register"]
