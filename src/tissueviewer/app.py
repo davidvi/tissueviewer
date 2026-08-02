@@ -11,6 +11,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from .codecs import check_codec_support
 from .config import Config
 from .discovery import AppState, build_location_map
 from .formats.ome_tiff import TiffCache
@@ -23,6 +24,7 @@ logger = logging.getLogger(__name__)
 
 def build_state(config: Config) -> AppState:
     config.validate()
+    check_codec_support()
     location_map, file_overrides, single_file = build_location_map(config)
     cache = TiffCache(max_items=config.tile_cache_size)
     state = AppState(

@@ -189,8 +189,16 @@ uvicorn my_module:app --host 0.0.0.0 --port 8000
 
 ## Troubleshooting
 
-- **`ModuleNotFoundError: imagecodecs`** — install `imagecodecs` or
-  reinstall `tissueviewer`; many OME-TIFFs use LZW/JPEG/Zstd compression.
+- **`<COMPRESSION.LZW: 5> requires the 'imagecodecs' package`** (or the same
+  for JPEG/Deflate/Zstd) — `imagecodecs` is missing. Slides open and the
+  `.dzi` manifest loads, but every tile returns HTTP 500 and the slide
+  renders blank; uncompressed slides in the same library keep working, so
+  this often appears only when the first compressed slide arrives. Install
+  it with `pip install imagecodecs`. `imagecodecs` is a declared dependency,
+  so this normally means the package is being run from a source checkout
+  (e.g. via `PYTHONPATH`) that was never `pip install`ed. The server logs a
+  warning at startup when it is absent, and `tissueviewer --validate` reports
+  the affected files.
 - **Port already in use** — `tissueviewer --port 8001`.
 - **Blank tiles / wrong colours** — delete the slide's `.sample.json` to
   reset settings, then reload.

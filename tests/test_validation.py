@@ -4,6 +4,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import numpy as np
+import tifffile
+
+from tissueviewer import codecs
 from tissueviewer.config import Config
 from tissueviewer.validation import run_validation
 
@@ -25,6 +29,61 @@ def test_validate_fails_on_corrupt_file(tmp_path: Path, capsys):
     out = capsys.readouterr().out
     assert rc == 1
     assert "FAIL" in out
+
+
+def test_validate_flags_compressed_file_when_codecs_missing(
+    tmp_path: Path, monkeypatch, capsys
+):
+    """A compressed slide is unreadable without imagecodecs.
+
+    Reading the header still succeeds, so without an explicit check this
+    file would be reported OK and then fail on every tile request.
+    """
+    path = tmp_path / "compressed.ome.tiff"
+    data = np.zeros((2, 64, 64), dtype=np.uint8)
+    tifffile.imwrite(
+        str(path),
+        data,
+        photometric="minisblack",
+        compression="lzw",
+        metadata={"axes": "CYX"},
+        ome=True,
+    )
+
+    codecs.imagecodecs_available.cache_clear()
+    monkeypatch.setattr(codecs, "imagecodecs_available", lambda: False)
+
+    config = Config(data_dir=tmp_path)
+    rc = run_validation(config)
+    out = capsys.readouterr().out
+
+    assert rc == 1
+    assert "FAIL" in out
+    assert "imagecodecs" in out
+
+
+def test_validate_passes_compressed_file_when_codecs_present(
+    tmp_path: Path, capsys
+):
+    path = tmp_path / "compressed.ome.tiff"
+    data = np.zeros((2, 64, 64), dtype=np.uint8)
+    tifffile.imwrite(
+        str(path),
+        data,
+        photometric="minisblack",
+        compression="lzw",
+        metadata={"axes": "CYX"},
+        ome=True,
+    )
+
+    codecs.imagecodecs_available.cache_clear()
+
+    config = Config(data_dir=tmp_path)
+    rc = run_validation(config)
+    out = capsys.readouterr().out
+
+    assert rc == 0
+    assert "OK" in out
 
 
 def test_validate_empty_dir(tmp_path: Path, capsys):

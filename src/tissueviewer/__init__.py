@@ -1,6 +1,6 @@
 """TissueViewer — standalone OME-TIFF viewer with a built-in web UI."""
 
-__version__ = "0.2.0"
+__version__ = "0.2.2"
 
 from .config import Config
 from .app import create_app

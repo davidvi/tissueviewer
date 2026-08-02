@@ -9,6 +9,7 @@ from typing import List
 
 import tifffile
 
+from .codecs import check_codec_support, missing_codec_reason
 from .config import Config
 from .discovery import _is_ome_tiff, build_location_map
 
@@ -62,6 +63,8 @@ def run_validation(config: Config) -> int:
         print("No OME-TIFF files found.")
         return 1
 
+    check_codec_support()
+
     failed = 0
     for path in files:
         try:
@@ -70,6 +73,17 @@ def run_validation(config: Config) -> int:
                 axes = series.axes
                 shape = series.shape
                 dtype = series.dtype
+                # ``keyframe`` is always a full TiffPage; ``pages[0]`` can
+                # be a TiffFrame in some multi-file OME layouts.
+                compression = int(series.keyframe.compression)
+            # Opening the header does not touch pixel data, so a file whose
+            # codec is unavailable looks perfectly healthy here and only
+            # fails later, once per tile request. Report it now instead.
+            reason = missing_codec_reason(compression)
+            if reason is not None:
+                failed += 1
+                print(f"FAIL {path}  {reason}")
+                continue
             channel_count = shape[axes.index("C")] if "C" in axes else 1
             print(
                 f"OK   {path}  axes={axes} shape={tuple(shape)} "
