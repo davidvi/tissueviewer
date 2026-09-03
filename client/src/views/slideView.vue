@@ -112,6 +112,7 @@
       </select>
       <input type="text" v-model="newFolderName" class="block w-full mt-1 pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm rounded-md" placeholder="or create a new folder">
       <button class="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded" @click="addToFolder">Add to folder</button>
+      <button v-if="selectedSampleFolderLocal" class="p-2 ml-2 bg-gray-600 hover:bg-gray-700 text-white rounded" @click="removeFromFolder">Remove from folder</button>
     </div>
 
         <div class="mb-4">
@@ -636,6 +637,13 @@ export default {
     addToFolder() {
       this.selectedSampleFolderLocal = this.newFolderName ? this.newFolderName : this.selectedSampleFolderDropdown;
       console.log("selected folder: ", this.selectedSampleFolderLocal);
+      this.saveDetails();
+    },
+    removeFromFolder() {
+      // Clearing the field is the only way out of a folder: the dropdown above
+      // is built from the folders that exist, so it can never offer "none".
+      this.selectedSampleFolderLocal = "";
+      this.newFolderName = "";
       this.saveDetails();
     },
     loadOpenSeaDragon() {
