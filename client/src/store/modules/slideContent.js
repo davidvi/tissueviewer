@@ -221,11 +221,49 @@ export const reloadSlide = async ({ state, commit }) => {
  * @param {Object} context - Vuex context object.
  */
 export const copySettings = async ({ state, commit, dispatch }, sample) => {
-  console.log("copying settings from: ", sample);
-  let selectedSampleBuf = state.samples.filter(s => s.name === sample)[0];
-  console.log("selected sample buf: ", selectedSampleBuf);
-  console.log("activated sample: ", state.activatedSample);
-  commit('SET_STATE_PROPERTY', { property: "activatedSample", value: selectedSampleBuf.details.channelsSetting });
+  const sourceSample = state.samples.filter(s => s.name === sample)[0];
+  const sourceChannels = sourceSample && sourceSample.details
+    ? sourceSample.details.channelsSetting
+    : null;
+
+  const current = state.activatedSample || [];
+  if (!sourceChannels || !sourceChannels.length) {
+    return { matched: 0, total: current.length, unmatched: [] };
+  }
+
+  // Match on channel name rather than position. A channel_number only means
+  // something within its own slide, so importing the source's wholesale asked
+  // the server for channels this slide may not have -- which fails the tile
+  // request outright when the two panels differ in size.
+  const key = name => String(name == null ? "" : name).trim().toLowerCase();
+  const byName = new Map();
+  sourceChannels.forEach(ch => {
+    const k = key(ch.channel_name);
+    if (k && !byName.has(k)) byName.set(k, ch);
+  });
+
+  const unmatched = [];
+  const merged = current.map(ch => {
+    const src = byName.get(key(ch.channel_name));
+    if (!src) {
+      unmatched.push(ch.channel_name);
+      return ch;
+    }
+    // Copy how the channel is displayed, never its identity: channel_number
+    // and channel_name stay as this slide defines them.
+    return {
+      ...ch,
+      stain: src.stain != null ? src.stain : ch.stain,
+      activated: src.activated != null ? src.activated : ch.activated,
+      low: typeof src.low === "number" ? src.low : ch.low,
+      high: typeof src.high === "number" ? src.high : ch.high,
+    };
+  });
+
+  commit('SET_STATE_PROPERTY', { property: "activatedSample", value: merged });
+  dispatch('reloadSlide');
+
+  return { matched: merged.length - unmatched.length, total: merged.length, unmatched };
 }
 
 /**

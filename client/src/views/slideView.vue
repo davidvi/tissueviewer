@@ -157,6 +157,7 @@
           </select>
         </div>
         <button class="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded" @click="copySettingsLocal">Copy settings</button>
+        <p v-if="copySettingsMessage" class="mt-1 text-xs text-white">{{ copySettingsMessage }}</p>
 
       <!-- ROTATION & FLIP CONTROLS -->
       <div class="mb-4 mt-4">
@@ -402,6 +403,7 @@ export default {
       selectedFolder: "",
       selectedSampleFolderDropdown: "",
       copySettingsFromSample: "",
+      copySettingsMessage: "",
     }
   },
   computed: {
@@ -629,10 +631,21 @@ export default {
         console.error('Failed to copy link: ', err);
       });
     },
-    copySettingsLocal() {
-      console.log("copying settings from: ", this.copySettingsFromSample);
-      console.log("activated sample: ", this.activatedSampleLocal);
-      this.copySettings(this.copySettingsFromSample);
+    async copySettingsLocal() {
+      if (!this.copySettingsFromSample) {
+        this.copySettingsMessage = "Pick a slide to copy from first.";
+        return;
+      }
+      const result = await this.copySettings(this.copySettingsFromSample);
+      if (!result || !result.total) {
+        this.copySettingsMessage = "Nothing to copy.";
+      } else if (!result.matched) {
+        this.copySettingsMessage = "No channel names in common, so nothing was copied. That slide uses a different panel.";
+      } else if (result.matched === result.total) {
+        this.copySettingsMessage = `Copied settings for all ${result.total} channels.`;
+      } else {
+        this.copySettingsMessage = `Copied settings for ${result.matched} of ${result.total} channels. ${result.unmatched.length} not present in the other slide were left unchanged.`;
+      }
     },
     addToFolder() {
       this.selectedSampleFolderLocal = this.newFolderName ? this.newFolderName : this.selectedSampleFolderDropdown;
