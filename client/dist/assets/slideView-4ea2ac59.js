@@ -1,4 +1,4 @@
-import{o as H,c as I,a as P,b as Ze,d as qe,F as se,w as Ee,r as ae,t as ie,m as Xe,e as Ye,f as Ke,g as Pe,h as oe,i as fe,j as $,v as me,k as ye,l as Ie,n as _e,p as Ae}from"./index-56169311.js";import{_ as je}from"./_plugin-vue_export-helper-c27b6911.js";var Je=typeof globalThis<"u"?globalThis:typeof window<"u"?window:typeof global<"u"?global:typeof self<"u"?self:{},Ve={},Qe={get exports(){return Ve},set exports(E){Ve=E}};(function(E){//! openseadragon 4.0.0
+import{o as H,c as I,a as P,b as Ze,d as qe,F as se,w as Ee,r as ae,t as ie,m as Xe,e as Ye,f as Ke,g as Pe,h as oe,i as fe,j as $,v as me,k as ye,l as Ie,n as _e,p as Ae}from"./index-0a86999e.js";import{_ as je}from"./_plugin-vue_export-helper-c27b6911.js";var Je=typeof globalThis<"u"?globalThis:typeof window<"u"?window:typeof global<"u"?global:typeof self<"u"?self:{},Ve={},Qe={get exports(){return Ve},set exports(E){Ve=E}};(function(E){//! openseadragon 4.0.0
 //! Built on 2022-12-16
 //! Git commit: v4.0.0-0-8e6196a
 //! http://openseadragon.github.io

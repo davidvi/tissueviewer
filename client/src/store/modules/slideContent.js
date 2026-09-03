@@ -267,6 +267,10 @@ export const loadSample = async ({ state, commit, dispatch }) => {
   commit('SET_STATE_PROPERTY', { property: "description", value: selectedSampleBuf.details.description ? selectedSampleBuf.details.description : "" });
   commit('SET_STATE_PROPERTY', { property: "selectedSampleAltName", value: selectedSampleBuf.details.altName ? selectedSampleBuf.details.altName : selectedSampleBuf.name });
   commit('SET_STATE_PROPERTY', { property: "overlays", value: selectedSampleBuf.details.overlays ? selectedSampleBuf.details.overlays : [] });
+  // Hydrate the folder too. saveDetails() writes state.selectedSampleFolder back
+  // to whichever slide is selected, so leaving it stale from a previously loaded
+  // slide would reassign this one's folder on any save.
+  commit('SET_STATE_PROPERTY', { property: "selectedSampleFolder", value: selectedSampleBuf.details.folder ? selectedSampleBuf.details.folder : "" });
 
   // Hydrate transform settings (rotation + flips), defaulting to identity when absent.
   const transform = selectedSampleBuf.details.transform || {};
